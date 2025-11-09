@@ -177,38 +177,64 @@ export async function getYesterdayExchangeRates(): Promise<ExchangeRate[]> {
     console.log('[getYesterdayExchangeRates] Found', data?.length || 0, 'rates for date', previousDate)
     
     // If no data found, try a different approach - get all rates and filter manually
+    // This handles cases where Supabase date comparison might not work as expected
     if (!data || data.length === 0) {
       console.log('[getYesterdayExchangeRates] No rates found with .eq(), trying manual filter...')
-      const { data: allRates } = await client
+      const { data: allRates, error: allRatesError } = await client
         .from('exchange_rates')
         .select('*')
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
       
-      console.log('[getYesterdayExchangeRates] All rates dates:', allRates?.map((r: any) => ({ date: r.date, currency: r.currency_code })))
-      
-      // Filter manually by comparing date strings
-      const filtered = allRates?.filter((rate: any) => {
-        const rateDateStr = typeof rate.date === 'string' ? rate.date : rate.date?.toISOString()?.split('T')[0]
-        return rateDateStr === previousDate
-      })
-      
-      console.log('[getYesterdayExchangeRates] Manually filtered:', filtered?.length || 0, 'rates')
-      
-      if (filtered && filtered.length > 0) {
-        // Use the filtered data
-        const previousRates: ExchangeRate[] = []
-        const seen = new Set<string>()
+      if (allRatesError) {
+        console.error('[getYesterdayExchangeRates] Error fetching all rates:', allRatesError)
+      } else {
+        console.log('[getYesterdayExchangeRates] All rates dates:', allRates?.map((r: any) => ({ 
+          date: r.date, 
+          dateType: typeof r.date,
+          dateStr: typeof r.date === 'string' ? r.date : r.date?.toISOString()?.split('T')[0],
+          currency: r.currency_code 
+        })))
         
-        for (const rate of filtered) {
-          if (!seen.has(rate.currency_code)) {
-            previousRates.push(rate)
-            seen.add(rate.currency_code)
+        // Filter manually by comparing date strings
+        // Handle both string dates and Date objects
+        const filtered = allRates?.filter((rate: any) => {
+          let rateDateStr: string
+          if (typeof rate.date === 'string') {
+            // If it's already a string, use it directly (might be 'YYYY-MM-DD' or ISO string)
+            rateDateStr = rate.date.split('T')[0] // Take only date part if it's ISO
+          } else if (rate.date instanceof Date) {
+            rateDateStr = rate.date.toISOString().split('T')[0]
+          } else {
+            // Fallback: try to convert
+            rateDateStr = new Date(rate.date).toISOString().split('T')[0]
           }
-        }
+          
+          const matches = rateDateStr === previousDate
+          if (matches) {
+            console.log('[getYesterdayExchangeRates] Match found:', rate.currency_code, rateDateStr, '===', previousDate)
+          }
+          return matches
+        })
         
-        previousRates.sort((a, b) => a.currency_code.localeCompare(b.currency_code))
-        return previousRates
+        console.log('[getYesterdayExchangeRates] Manually filtered:', filtered?.length || 0, 'rates')
+        
+        if (filtered && filtered.length > 0) {
+          // Use the filtered data
+          const previousRates: ExchangeRate[] = []
+          const seen = new Set<string>()
+          
+          for (const rate of filtered) {
+            if (!seen.has(rate.currency_code)) {
+              previousRates.push(rate)
+              seen.add(rate.currency_code)
+            }
+          }
+          
+          previousRates.sort((a, b) => a.currency_code.localeCompare(b.currency_code))
+          console.log('[getYesterdayExchangeRates] Returning', previousRates.length, 'manually filtered rates')
+          return previousRates
+        }
       }
     }
 
