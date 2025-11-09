@@ -63,16 +63,21 @@ export async function trackEvent(event: AnalyticsEvent): Promise<void> {
     }
     
     // Send to API
-    await fetch('/api/analytics/track', {
+    const response = await fetch('/api/analytics/track', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(eventData),
     })
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Analytics tracking failed:', response.status, errorData)
+    }
   } catch (error) {
-    // Silently fail - don't break the app if analytics fails
-    console.warn('Analytics tracking failed:', error)
+    // Log error for debugging
+    console.error('Analytics tracking error:', error)
   }
 }
 
