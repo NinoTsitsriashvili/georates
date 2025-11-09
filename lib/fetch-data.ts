@@ -400,6 +400,30 @@ export async function refreshAllData(): Promise<{
       throw new Error('No exchange rates fetched')
     }
     
+    console.log(`📊 Fetched ${rates.length} rates:`, rates.map(r => `${r.currency_code}=${r.official_rate}`).join(', '))
+    
+    // Get today's date for cleanup
+    const today = new Date().toISOString().split('T')[0]
+    
+    // Clean up: Delete ALL records for today to ensure fresh data
+    try {
+      const db = await import('@/lib/db')
+      const client = db.getSupabase()
+      const { error: cleanupError } = await client
+        .from('exchange_rates')
+        .delete()
+        .eq('date', today)
+      
+      if (cleanupError) {
+        console.warn('⚠️ Cleanup warning (may not exist):', cleanupError.message)
+      } else {
+        console.log(`🧹 Cleaned up all records for ${today}`)
+      }
+    } catch (cleanupErr: any) {
+      console.warn('⚠️ Cleanup failed (continuing anyway):', cleanupErr.message)
+    }
+    
+    // Now insert all fresh rates
     for (const rate of rates) {
       try {
         console.log(`  💾 Saving ${rate.currency_code}: ${rate.official_rate} GEL (buy: ${rate.buy_rate}, sell: ${rate.sell_rate}) for date ${rate.date}`)
