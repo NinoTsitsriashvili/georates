@@ -16,15 +16,22 @@ export default function ExchangeRatesCard() {
 
   useEffect(() => {
     fetchRates(true) // Initial load
-    // Refresh rates every 5 minutes to catch database updates
-    const interval = setInterval(() => fetchRates(false), 5 * 60 * 1000)
+    // Refresh rates every 30 seconds to catch database updates quickly
+    const interval = setInterval(() => fetchRates(false), 30 * 1000)
     return () => clearInterval(interval)
   }, [])
 
   const fetchRates = async (isInitialLoad: boolean = false) => {
     try {
       // Add cache-busting parameter to ensure fresh data
-      const res = await fetch(`/api/exchange-rates?t=${Date.now()}`)
+      // Use timestamp to bypass browser cache
+      const res = await fetch(`/api/exchange-rates?t=${Date.now()}`, {
+        cache: 'no-store', // Disable caching
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      })
       const data = await res.json()
       
       console.log('[ExchangeRatesCard] Fetched rates:', data)
@@ -34,9 +41,20 @@ export default function ExchangeRatesCard() {
         if (data.debug) {
           console.log('[ExchangeRatesCard] Debug info:', data.debug)
         }
-        if (data.rates[0]?._debug) {
-          console.log('[ExchangeRatesCard] Rate debug:', data.rates[0]._debug)
-        }
+        
+        // Log each rate with its previous_rate for debugging
+        data.rates.forEach((rate: any) => {
+          if (rate._debug) {
+            console.log(`[ExchangeRatesCard] ${rate.currency_code}:`, {
+              today: rate.official_rate,
+              yesterday: rate._debug.yesterdayRate,
+              previous_rate: rate.previous_rate,
+              change: rate._debug.change,
+              changePercent: rate._debug.changePercent,
+            })
+          }
+        })
+        
         setRates(data.rates)
       } else {
         // Use fallback rates if API fails
@@ -134,6 +152,12 @@ export default function ExchangeRatesCard() {
     return names[code] || code
   }
 
+  // Add a manual refresh button for testing
+  const handleManualRefresh = () => {
+    console.log('[ExchangeRatesCard] Manual refresh triggered')
+    fetchRates(false)
+  }
+
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 sm:p-6 lg:p-8">
@@ -166,13 +190,24 @@ export default function ExchangeRatesCard() {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 sm:p-6 lg:p-8" id="exchange-rates">
       {/* Header */}
-      <div className="mb-6 sm:mb-8">
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          {t('exchangeRates.title')}
-        </h2>
-        <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
-          {t('exchangeRates.baseCurrency')} GEL (Georgian Lari)
-        </p>
+      <div className="mb-6 sm:mb-8 flex justify-between items-start">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            {t('exchangeRates.title')}
+          </h2>
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
+            {t('exchangeRates.baseCurrency')} GEL (Georgian Lari)
+          </p>
+        </div>
+        <button
+          onClick={handleManualRefresh}
+          className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          title="Refresh rates"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
       </div>
 
       {/* Currency Cards */}
