@@ -33,7 +33,6 @@ export default function ElectricityCard() {
     return names[type] || type
   }
 
-  // Group tariffs by region
   const groupedTariffs = tariffs.reduce((acc, tariff) => {
     if (!acc[tariff.region]) {
       acc[tariff.region] = []
@@ -44,12 +43,12 @@ export default function ElectricityCard() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
+      <div className="bg-[var(--color-card-bg)] rounded-card shadow-card p-6">
         <div className="animate-pulse">
-          <div className="h-5 sm:h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
-          <div className="space-y-3">
-            <div className="h-20 sm:h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            <div className="h-20 sm:h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <div className="h-8 bg-neutral-light dark:bg-neutral-dark rounded w-1/3 mb-6"></div>
+          <div className="space-y-4">
+            <div className="h-24 bg-neutral-light dark:bg-neutral-dark rounded-card"></div>
+            <div className="h-24 bg-neutral-light dark:bg-neutral-dark rounded-card"></div>
           </div>
         </div>
       </div>
@@ -57,30 +56,30 @@ export default function ElectricityCard() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 sm:p-6 lg:p-8 h-full" id="electricity">
-      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-6 sm:mb-8">
+    <div className="bg-[var(--color-card-bg)] rounded-card shadow-card p-6 transition-all duration-base hover:shadow-card-hover h-full" id="electricity">
+      <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-6">
         {t('electricity.title')}
       </h2>
 
-      <div className="space-y-4 sm:space-y-5">
+      <div className="space-y-4">
         {Object.entries(groupedTariffs).map(([region, regionTariffs]) => (
           <div
             key={region}
-            className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 sm:p-5 bg-gray-50 dark:bg-gray-700/30"
+            className="border border-[var(--color-border)] rounded-card p-5 bg-[var(--color-accent-bg)] transition-all duration-base hover:shadow-card"
           >
-            <h3 className="font-semibold text-lg sm:text-xl text-gray-900 dark:text-white mb-4">
+            <h3 className="font-semibold text-lg text-[var(--color-text-primary)] mb-4">
               {region}
             </h3>
             <div className="grid grid-cols-2 gap-4">
               {regionTariffs.map((tariff) => (
                 <div key={`${region}-${tariff.tariff_type}`} className="text-center">
-                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  <div className="text-[12px] text-[var(--color-text-secondary)] mb-2">
                     {getTariffTypeName(tariff.tariff_type)}
                   </div>
-                  <div className="text-xl sm:text-2xl font-bold text-primary-600 dark:text-primary-400">
+                  <div className="text-2xl font-bold text-primary mb-1">
                     {tariff.price_per_kwh.toFixed(4)}
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  <div className="text-[12px] text-[var(--color-text-secondary)]">
                     {t('electricity.perKwh')}
                   </div>
                 </div>
@@ -91,11 +90,10 @@ export default function ElectricityCard() {
       </div>
 
       {tariffs.length === 0 && (
-        <div className="text-center text-gray-500 dark:text-gray-400 py-6 sm:py-8 text-sm sm:text-base">
+        <div className="text-center text-[var(--color-text-secondary)] py-12 text-[15px]">
           {t('common.loading')}
         </div>
       )}
     </div>
   )
 }
-

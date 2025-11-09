@@ -22,10 +22,8 @@ export default function ExchangeRatesCard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchRates(true) // Initial load
-    // Refresh rates every 10 seconds to catch database updates immediately
+    fetchRates(true)
     const interval = setInterval(() => {
-      console.log('[ExchangeRatesCard] Auto-refreshing from database...')
       fetchRates(false)
     }, 10 * 1000)
     return () => clearInterval(interval)
@@ -33,10 +31,8 @@ export default function ExchangeRatesCard() {
 
   const fetchRates = async (isInitialLoad: boolean = false) => {
     try {
-      // Add cache-busting parameter to ensure fresh data
-      // Use timestamp to bypass browser cache
       const res = await fetch(`/api/exchange-rates?t=${Date.now()}`, {
-        cache: 'no-store', // Disable caching
+        cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
@@ -44,34 +40,13 @@ export default function ExchangeRatesCard() {
       })
       const data = await res.json()
       
-      console.log('[ExchangeRatesCard] Fetched rates:', data)
-      
       if (data.success && data.rates) {
-        // Log debug info if available
-        if (data.debug) {
-          console.log('[ExchangeRatesCard] Debug info:', data.debug)
-        }
-        
-        // Log each rate - all values come from database
-        data.rates.forEach((rate: any) => {
-          console.log(`[ExchangeRatesCard] ${rate.currency_code} (from DB):`, {
-            today: rate.official_rate,
-            yesterday: rate.previous_rate,
-            change: rate.change,
-            change_percent: rate.change_percent,
-            has_yesterday_data: rate.has_yesterday_data,
-            calculated_at: rate.calculated_at,
-          })
-        })
-        
         setRates(data.rates)
       } else {
-        // Use fallback rates if API fails
         setRates(getFallbackRates())
       }
     } catch (error) {
       console.error('Error fetching rates:', error)
-      // Use fallback rates on error
       setRates(getFallbackRates())
     } finally {
       if (isInitialLoad) {
@@ -80,7 +55,6 @@ export default function ExchangeRatesCard() {
     }
   }
 
-  // Fallback rates function
   const getFallbackRates = (): RateWithChange[] => {
     const today = new Date().toISOString().split('T')[0]
     return [
@@ -111,20 +85,16 @@ export default function ExchangeRatesCard() {
     ]
   }
 
-  // Display change indicator - ALL values come from database (pre-calculated server-side)
-  // No client-side calculations - everything is from database
   const getChangeIndicator = (rate: RateWithChange) => {
-    // Use pre-calculated values from database (server-side)
     if (!rate.has_yesterday_data) {
       return (
-        <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-          <span className="text-xs">—</span>
-          <span className="text-xs">N/A</span>
+        <div className="flex items-center gap-1 text-[var(--color-text-secondary)]">
+          <span className="text-[12px]">—</span>
+          <span className="text-[12px]">N/A</span>
         </div>
       )
     }
     
-    // All values come from database via API
     const changePercent = rate.change_percent || '0.00'
     const isPositive = rate.is_positive || false
     const isNegative = rate.is_negative || false
@@ -132,25 +102,28 @@ export default function ExchangeRatesCard() {
     
     if (isNeutral) {
       return (
-        <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-          <span className="text-xs">—</span>
-          <span className="text-xs">0.00%</span>
+        <div className="flex items-center gap-1 text-[var(--color-text-secondary)]">
+          <span className="text-[12px]">—</span>
+          <span className="text-[12px]">0.00%</span>
         </div>
       )
     }
     
+    const colorClass = isPositive ? 'text-success' : 'text-danger'
+    const icon = isPositive ? (
+      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+      </svg>
+    ) : (
+      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+      </svg>
+    )
+    
     return (
-      <div className={`flex items-center gap-1 ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-        {isPositive ? (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-          </svg>
-        ) : (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        )}
-        <span className="text-xs font-semibold">{Math.abs(parseFloat(changePercent))}%</span>
+      <div className={`flex items-center gap-1 ${colorClass}`}>
+        {icon}
+        <span className="text-[12px] font-semibold">{Math.abs(parseFloat(changePercent))}%</span>
       </div>
     )
   }
@@ -165,35 +138,28 @@ export default function ExchangeRatesCard() {
     return names[code] || code
   }
 
-  // Add a manual refresh button for testing
-  const handleManualRefresh = () => {
-    console.log('[ExchangeRatesCard] Manual refresh triggered')
-    fetchRates(false)
-  }
-
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 sm:p-6 lg:p-8">
+      <div className="bg-[var(--color-card-bg)] rounded-card shadow-card p-6">
         <div className="animate-pulse">
-          <div className="h-6 sm:h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-6">
-            <div className="h-40 sm:h-48 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-            <div className="h-40 sm:h-48 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-            <div className="h-40 sm:h-48 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+          <div className="h-8 bg-neutral-light dark:bg-neutral-dark rounded w-1/3 mb-6"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-48 bg-neutral-light dark:bg-neutral-dark rounded-card"></div>
+            ))}
           </div>
         </div>
       </div>
     )
   }
 
-  // Show message if no rates
   if (!loading && rates.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6" id="exchange-rates">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
+      <div className="bg-[var(--color-card-bg)] rounded-card shadow-card p-6" id="exchange-rates">
+        <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-6">
           {t('exchangeRates.title')}
         </h2>
-        <div className="text-center text-gray-500 dark:text-gray-400 py-6 sm:py-8 text-sm sm:text-base">
+        <div className="text-center text-[var(--color-text-secondary)] py-12 text-[15px]">
           {t('common.loading')}...
         </div>
       </div>
@@ -201,21 +167,25 @@ export default function ExchangeRatesCard() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 sm:p-6 lg:p-8" id="exchange-rates">
+    <div 
+      className="bg-[var(--color-card-bg)] rounded-card shadow-card p-6 transition-all duration-base hover:shadow-card-hover" 
+      id="exchange-rates"
+    >
       {/* Header */}
-      <div className="mb-6 sm:mb-8 flex justify-between items-start">
+      <div className="mb-8 flex justify-between items-start">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h2 className="text-3xl font-bold text-[var(--color-text-primary)] mb-2">
             {t('exchangeRates.title')}
           </h2>
-          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
+          <p className="text-[15px] text-[var(--color-text-secondary)]">
             {t('exchangeRates.baseCurrency')} GEL (Georgian Lari)
           </p>
         </div>
         <button
-          onClick={handleManualRefresh}
-          className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          onClick={() => fetchRates(false)}
+          className="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-neutral-light)] rounded-lg transition-all duration-base"
           title="Refresh rates"
+          aria-label="Refresh rates"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -223,20 +193,20 @@ export default function ExchangeRatesCard() {
         </button>
       </div>
 
-      {/* Currency Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-6 sm:mb-8">
+      {/* Currency Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {rates.slice(0, 3).map((rate) => (
           <div
             key={rate.currency_code}
-            className="p-5 sm:p-6 rounded-xl border-2 border-gray-200 dark:border-gray-700 text-left w-full bg-white dark:bg-gray-800/50"
+            className="bg-[var(--color-accent-bg)] rounded-card p-5 border border-[var(--color-border)] transition-all duration-hover hover:shadow-card-hover hover:-translate-y-0.5"
           >
             {/* Currency Header */}
             <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">
+                <div className="text-lg font-semibold text-[var(--color-text-primary)] mb-1">
                   {rate.currency_code}
                 </div>
-                <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                <div className="text-[12px] text-[var(--color-text-secondary)]">
                   {getCurrencyName(rate.currency_code)}
                 </div>
               </div>
@@ -244,26 +214,30 @@ export default function ExchangeRatesCard() {
             </div>
             
             {/* Main Rate */}
-            <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="text-3xl sm:text-4xl font-bold text-primary-600 dark:text-primary-400 mb-1">
+            <div className="mb-4 pb-4 border-b border-[var(--color-border)]">
+              <div className="text-4xl font-bold text-primary mb-1">
                 {rate.official_rate.toFixed(4)}
               </div>
-              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                GEL per 1 {rate.currency_code}
+              <div className="text-[12px] text-[var(--color-text-secondary)]">
+                ₾ per 1 {rate.currency_code}
               </div>
             </div>
 
             {/* Buy/Sell Rates */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('exchangeRates.buy')}</div>
-                <div className="text-base font-semibold text-green-600 dark:text-green-400">
+              <div className="bg-[var(--color-card-bg)] rounded-lg p-3">
+                <div className="text-[12px] text-[var(--color-text-secondary)] mb-1">
+                  {t('exchangeRates.buy')}
+                </div>
+                <div className="text-[15px] font-semibold text-success">
                   {rate.buy_rate.toFixed(4)}
                 </div>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('exchangeRates.sell')}</div>
-                <div className="text-base font-semibold text-red-600 dark:text-red-400">
+              <div className="bg-[var(--color-card-bg)] rounded-lg p-3">
+                <div className="text-[12px] text-[var(--color-text-secondary)] mb-1">
+                  {t('exchangeRates.sell')}
+                </div>
+                <div className="text-[15px] font-semibold text-danger">
                   {rate.sell_rate.toFixed(4)}
                 </div>
               </div>
@@ -273,10 +247,10 @@ export default function ExchangeRatesCard() {
       </div>
 
       {/* View All Details Button */}
-      <div className="flex justify-center mt-6 sm:mt-8">
+      <div className="flex justify-center">
         <Link
           href="/rates"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors text-sm sm:text-base shadow-md hover:shadow-lg"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg transition-all duration-hover shadow-card hover:shadow-card-hover text-[15px]"
         >
           {t('exchangeRates.viewAllDetails')}
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -284,8 +258,6 @@ export default function ExchangeRatesCard() {
           </svg>
         </Link>
       </div>
-
     </div>
   )
 }
-

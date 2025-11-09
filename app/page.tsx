@@ -15,7 +15,6 @@ export default function Home() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [lastUpdateRelative, setLastUpdateRelative] = useState<string>('')
 
-  // Format relative time (e.g., "2 hours ago", "Just now")
   const formatRelativeTime = (date: Date): string => {
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
@@ -31,7 +30,6 @@ export default function Home() {
   }
 
   useEffect(() => {
-    // Fetch last update time
     const fetchLastUpdate = () => {
       fetch('/api/last-update')
         .then(res => res.json())
@@ -46,19 +44,18 @@ export default function Home() {
     }
 
     fetchLastUpdate()
-    // Refresh every 5 minutes to update relative time
     const interval = setInterval(fetchLastUpdate, 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [locale])
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
+    <div className="min-h-screen bg-[var(--color-accent-bg)] transition-colors duration-base flex flex-col">
       {/* Header */}
       <Header />
       
       {/* AdSense Header */}
-      <div className="w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 hidden sm:block">
+      <div className="w-full bg-[var(--color-card-bg)] border-b border-[var(--color-border)]">
+        <div className="container mx-auto px-6 py-3 max-w-7xl hidden sm:block">
           <AdSensePlaceholder position="header" />
         </div>
       </div>
@@ -66,21 +63,21 @@ export default function Home() {
       {/* Main Content */}
       <main className="flex-1 w-full">
         {/* Hero Section */}
-        <section className="w-full py-8 sm:py-12 lg:py-16">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <section className="w-full py-12 lg:py-16">
+          <div className="container mx-auto px-6 max-w-7xl">
             <div className="text-center">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
+              <h1 className="text-4xl font-bold text-[var(--color-text-primary)] mb-6 tracking-wide">
                 {t('common.title')}
               </h1>
-              <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 dark:text-gray-300 mb-4 sm:mb-6 max-w-3xl mx-auto">
+              <p className="text-2xl text-[var(--color-text-secondary)] mb-6 max-w-3xl mx-auto">
                 {t('common.subtitle')}
               </p>
               {lastUpdate && (
-                <div className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
+                <div className="text-[15px] text-[var(--color-text-secondary)]">
                   <p className="font-medium">
                     {t('common.lastUpdate')}: {lastUpdate.toLocaleString(locale)}
                   </p>
-                  <p className="text-xs sm:text-sm mt-1">
+                  <p className="text-[12px] mt-1">
                     {lastUpdateRelative}
                   </p>
                 </div>
@@ -90,9 +87,9 @@ export default function Home() {
         </section>
 
         {/* Exchange Rates Section */}
-        <section id="exchange-rates" className="w-full py-6 sm:py-8 lg:py-10">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        <section id="exchange-rates" className="w-full py-8 lg:py-10">
+          <div className="container mx-auto px-6 max-w-7xl">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Exchange Rates Card - Main Content */}
               <div className="lg:col-span-8">
                 <ExchangeRatesCard />
@@ -109,9 +106,9 @@ export default function Home() {
         </section>
 
         {/* Petrol Prices and Electricity Section */}
-        <section className="w-full py-6 sm:py-8 lg:py-10">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+        <section className="w-full py-8 lg:py-10">
+          <div className="container mx-auto px-6 max-w-7xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <PetrolPricesCard />
               <ElectricityCard />
             </div>
@@ -120,20 +117,20 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-6 sm:py-8">
-          <div className="mb-4 sm:mb-6 hidden sm:block">
+      <footer className="w-full bg-[var(--color-card-bg)] border-t border-[var(--color-border)] mt-auto">
+        <div className="container mx-auto px-6 max-w-7xl py-8">
+          <div className="mb-6 hidden sm:block">
             <AdSensePlaceholder position="footer" />
           </div>
-          <div className="text-center text-gray-600 dark:text-gray-400">
-            <p className="text-sm sm:text-base font-medium mb-2">
+          <div className="text-center text-[var(--color-text-secondary)]">
+            <p className="text-[15px] font-medium mb-2">
               &copy; {new Date().getFullYear()} GeoRates. {t('common.title')}
             </p>
-            <p className="text-xs sm:text-sm">
+            <p className="text-[12px]">
               {t('common.lastUpdate')}: {lastUpdate ? (
                 <>
                   {lastUpdate.toLocaleString(locale)}
-                  {lastUpdateRelative && <span className="ml-2 text-gray-400">({lastUpdateRelative})</span>}
+                  {lastUpdateRelative && <span className="ml-2">({lastUpdateRelative})</span>}
                 </>
               ) : 'N/A'}
             </p>
@@ -143,4 +140,3 @@ export default function Home() {
     </div>
   )
 }
-
