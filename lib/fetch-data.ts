@@ -8,7 +8,8 @@ const NBG_API_URL = 'https://nbg.gov.ge/en/monetary-policy/currency'
 
 /**
  * Fetch exchange rates from National Bank of Georgia API
- * Using multiple sources for reliability
+ * NBG publishes official rates by ~17:00 local time each business day
+ * Rates are in GEL (1 foreign currency = X GEL)
  */
 export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
   try {
@@ -16,275 +17,295 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
     const currencies = ['USD', 'EUR', 'RUB']
     const rates: ExchangeRate[] = []
 
-    console.log('Starting exchange rate fetch...')
+    console.log('🚀 Starting exchange rate fetch from NBG...')
 
-    // Method 1: Try National Bank of Georgia official API
+    // Method 1: Try Bank of Georgia API wrapper for NBG rates (most reliable)
+    // This uses: GET api/rates/nbg/{currency}
+    // Returns: GEL per 1 foreign currency (e.g., 1 USD = 2.7241 GEL)
     try {
-      console.log('Trying National Bank of Georgia API...')
+      console.log('📡 Trying Bank of Georgia API (NBG rates wrapper)...')
       
-      // NBG API endpoint - primary endpoint
-      const nbgEndpoint = 'https://nbg.gov.ge/api/currencies/currencies.json'
+      const bogApiBase = 'https://api.bog.ge'
+      let successCount = 0
       
-      try {
-        const response = await axios.get(nbgEndpoint, {
-          timeout: 5000, // Reduced from 10s to 5s
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
-        })
-
-        console.log('NBG API response:', JSON.stringify(response.data).substring(0, 500))
-
-        if (response.data) {
-          const data = response.data
-          
-          // Handle array format (most common for NBG API)
-          if (Array.isArray(data)) {
-            console.log(`NBG API returned array with ${data.length} items`)
-            
-            for (const currency of currencies) {
-              // Try multiple field name variations
-              const rateData = data.find((r: any) => {
-                const codeMatch = 
-                  r.code === currency || 
-                  r.currency === currency || 
-                  r.currencyCode === currency ||
-                  r.CurrencyCode === currency ||
-                  r.isoCode === currency ||
-                  (r.code && r.code.toUpperCase() === currency) ||
-                  (r.currency && r.currency.toUpperCase() === currency)
-                
-                return codeMatch
-              })
-              
-              if (rateData) {
-                console.log(`Found rate data for ${currency}:`, rateData)
-                
-                // Try multiple rate field variations
-                // NBG API typically returns rate as: 1 foreign currency = X GEL
-                const officialRate = parseFloat(
-                  rateData.rate || 
-                  rateData.Rate || 
-                  rateData.value || 
-                  rateData.Value ||
-                  rateData.rateFormated || 
-                  rateData.rateFormatted ||
-                  rateData.amount ||
-                  rateData.curOfficialRate ||
-                  0
-                )
-                
-                if (officialRate > 0) {
-                  // The rate from NBG is already: 1 USD = X GEL (GEL base)
-                  // So we use it directly
-                  rates.push({
-                    currency_code: currency,
-                    buy_rate: officialRate * 1.005,
-                    sell_rate: officialRate * 0.995,
-                    official_rate: officialRate,
-                    date: today,
-                  })
-                  console.log(`✓ Found ${currency} rate: ${officialRate} GEL per 1 ${currency}`)
-                } else {
-                  console.warn(`Rate for ${currency} is 0 or invalid:`, rateData)
-                }
-              } else {
-                console.warn(`No rate data found for ${currency} in NBG API response`)
-              }
-            }
-          } 
-          // Handle object format
-          else if (typeof data === 'object' && !Array.isArray(data)) {
-            console.log('NBG API returned object format')
-            
-            for (const currency of currencies) {
-              // Try different key formats
-              const rateData = 
-                data[currency] || 
-                data[currency.toLowerCase()] || 
-                data[currency.toUpperCase()] ||
-                data[`cur${currency}`] ||
-                data[`Cur${currency}`]
-              
-              if (rateData) {
-                const officialRate = parseFloat(
-                  typeof rateData === 'number' ? rateData :
-                  rateData.rate || rateData.value || rateData || 0
-                )
-                
-                if (officialRate > 0) {
-                  rates.push({
-                    currency_code: currency,
-                    buy_rate: officialRate * 1.005,
-                    sell_rate: officialRate * 0.995,
-                    official_rate: officialRate,
-                    date: today,
-                  })
-                  console.log(`✓ Found ${currency} rate: ${officialRate} GEL per 1 ${currency}`)
-                }
-              }
-            }
-          }
-
-          if (rates.length >= 3) {
-            console.log('✓ Successfully fetched all rates from NBG API:', rates)
-            return rates
-          } else {
-            console.warn(`Only found ${rates.length} rates, expected 3`)
-          }
-        }
-      } catch (error: any) {
-        console.warn(`NBG endpoint failed:`, error.message)
-        if (error.response) {
-          console.warn(`Response status: ${error.response.status}`)
-          console.warn(`Response data:`, error.response.data)
-        }
-      }
-    } catch (error: any) {
-      console.warn('NBG API failed:', error.message)
-    }
-
-    // Method 2: Try Bank of Georgia API (may require auth)
-    try {
-      console.log('Trying Bank of Georgia API...')
-      
-      const bogBaseUrls = [
-        'https://businessmanager.bog.ge',
-        'https://api.bog.ge',
-      ]
-
-      for (const baseUrl of bogBaseUrls) {
+      for (const currency of currencies) {
         try {
-          for (const currency of currencies) {
-            const url = `${baseUrl}/api/rates/nbg/${currency}`
-            try {
-              const response = await axios.get(url, {
-                timeout: 3000, // Reduced from 8s to 3s
-                headers: {
-                  'Accept': 'application/json',
-                },
-              })
+          const url = `${bogApiBase}/api/rates/nbg/${currency}`
+          console.log(`  Fetching ${currency} from: ${url}`)
+          
+          const response = await axios.get(url, {
+            timeout: 5000,
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'GeoRates/1.0',
+            },
+          })
 
-              console.log(`BOG API response for ${currency}:`, response.data)
+          console.log(`  ${currency} response:`, response.data)
 
-              let officialRate: number = 0
-              
-              if (typeof response.data === 'number') {
-                officialRate = response.data
-              } else if (response.data && typeof response.data === 'object') {
-                officialRate = response.data.rate || response.data.value || response.data.amount || 0
-              } else if (typeof response.data === 'string') {
-                officialRate = parseFloat(response.data) || 0
-              }
-
-              if (officialRate > 0) {
-                rates.push({
-                  currency_code: currency,
-                  buy_rate: officialRate * 1.005,
-                  sell_rate: officialRate * 0.995,
-                  official_rate: officialRate,
-                  date: today,
-                })
-                console.log(`Found ${currency} rate from BOG: ${officialRate}`)
-              }
-            } catch (error: any) {
-              console.warn(`BOG API failed for ${currency}:`, error.message)
-              continue
-            }
+          let officialRate: number = 0
+          
+          // Handle different response formats
+          if (typeof response.data === 'number') {
+            officialRate = response.data
+          } else if (response.data && typeof response.data === 'object') {
+            // Try common field names
+            officialRate = parseFloat(
+              response.data.rate ||
+              response.data.value ||
+              response.data.amount ||
+              response.data.curOfficialRate ||
+              response.data.Rate ||
+              response.data.Value ||
+              0
+            )
+          } else if (typeof response.data === 'string') {
+            officialRate = parseFloat(response.data) || 0
           }
 
-          if (rates.length >= 3) {
-            console.log('Successfully fetched rates from BOG API:', rates)
-            return rates
+          if (officialRate > 0 && officialRate < 1000) { // Sanity check
+            // Rate is already: 1 foreign currency = X GEL
+            // Calculate buy/sell rates with small spread (0.5% each way)
+            const buyRate = officialRate * 1.005  // Bank buys foreign currency (slightly higher)
+            const sellRate = officialRate * 0.995 // Bank sells foreign currency (slightly lower)
+            
+            rates.push({
+              currency_code: currency,
+              buy_rate: parseFloat(buyRate.toFixed(4)),
+              sell_rate: parseFloat(sellRate.toFixed(4)),
+              official_rate: parseFloat(officialRate.toFixed(4)),
+              date: today,
+            })
+            
+            console.log(`  ✅ ${currency}: ${officialRate} GEL per 1 ${currency}`)
+            successCount++
+          } else {
+            console.warn(`  ⚠️ Invalid rate for ${currency}: ${officialRate}`)
           }
         } catch (error: any) {
-          console.warn(`BOG base URL ${baseUrl} failed:`, error.message)
+          console.warn(`  ❌ Failed to fetch ${currency}:`, error.message)
           continue
         }
       }
+
+      if (successCount === currencies.length) {
+        console.log(`✅ Successfully fetched all ${successCount} rates from BOG API (NBG wrapper)`)
+        return rates
+      } else if (successCount > 0) {
+        console.warn(`⚠️ Only fetched ${successCount}/${currencies.length} rates from BOG API`)
+      }
     } catch (error: any) {
-      console.warn('BOG API failed:', error.message)
+      console.warn('❌ BOG API (NBG wrapper) failed:', error.message)
     }
 
-    // Method 3: Try exchangerate-api.com as fallback
+    // Method 2: Try direct NBG API endpoints
     try {
-      console.log('Trying exchangerate-api.com as fallback...')
+      console.log('📡 Trying direct NBG API endpoints...')
       
-      const response = await axios.get('https://api.exchangerate-api.com/v4/latest/USD', {
-        timeout: 5000, // Reduced from 10s to 5s
-        headers: {
-          'Accept': 'application/json',
-        },
-      })
+      // Try multiple NBG API endpoint formats
+      const nbgEndpoints = [
+        'https://nbg.gov.ge/api/currencies/currencies.json',
+        'https://nbg.gov.ge/api/currencies',
+        'https://nbg.gov.ge/api/exchange-rates',
+      ]
 
-      if (response.data && response.data.rates) {
-        const usdRates = response.data.rates
-        const gelRate = usdRates['GEL']
-        
-        if (gelRate && gelRate > 0) {
-          // USD rate
-          rates.push({
-            currency_code: 'USD',
-            buy_rate: gelRate * 1.005,
-            sell_rate: gelRate * 0.995,
-            official_rate: gelRate,
-            date: today,
+      for (const endpoint of nbgEndpoints) {
+        try {
+          console.log(`  Trying: ${endpoint}`)
+          const response = await axios.get(endpoint, {
+            timeout: 5000,
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'GeoRates/1.0',
+            },
           })
 
-          // EUR rate
-          const eurToUsd = usdRates['EUR']
-          if (eurToUsd && eurToUsd > 0) {
-            const eurToGel = eurToUsd * gelRate
-            rates.push({
-              currency_code: 'EUR',
-              buy_rate: eurToGel * 1.005,
-              sell_rate: eurToGel * 0.995,
-              official_rate: eurToGel,
-              date: today,
-            })
-          }
+          console.log(`  Response structure:`, typeof response.data, Array.isArray(response.data) ? 'array' : 'object')
+          
+          if (response.data) {
+            const data = response.data
+            
+            // Handle array format
+            if (Array.isArray(data)) {
+              console.log(`  Found array with ${data.length} items`)
+              
+              for (const currency of currencies) {
+                const rateData = data.find((r: any) => {
+                  const code = r.code || r.currency || r.currencyCode || r.CurrencyCode || r.isoCode
+                  return code && code.toUpperCase() === currency.toUpperCase()
+                })
+                
+                if (rateData) {
+                  const officialRate = parseFloat(
+                    rateData.rate || rateData.Rate || rateData.value || rateData.Value ||
+                    rateData.rateFormated || rateData.rateFormatted || rateData.amount || 0
+                  )
+                  
+                  if (officialRate > 0 && officialRate < 1000) {
+                    // Check if we already have this currency
+                    const existing = rates.find(r => r.currency_code === currency)
+                    if (!existing) {
+                      rates.push({
+                        currency_code: currency,
+                        buy_rate: parseFloat((officialRate * 1.005).toFixed(4)),
+                        sell_rate: parseFloat((officialRate * 0.995).toFixed(4)),
+                        official_rate: parseFloat(officialRate.toFixed(4)),
+                        date: today,
+                      })
+                      console.log(`  ✅ ${currency}: ${officialRate} GEL`)
+                    }
+                  }
+                }
+              }
+            } 
+            // Handle object format
+            else if (typeof data === 'object' && !Array.isArray(data)) {
+              console.log('  NBG API returned object format')
+              
+              for (const currency of currencies) {
+                // Check if we already have this currency
+                const existing = rates.find(r => r.currency_code === currency)
+                if (existing) continue
+                
+                // Try different key formats
+                const rateData = 
+                  data[currency] || 
+                  data[currency.toLowerCase()] || 
+                  data[currency.toUpperCase()] ||
+                  data[`cur${currency}`] ||
+                  data[`Cur${currency}`]
+                
+                if (rateData) {
+                  const officialRate = parseFloat(
+                    typeof rateData === 'number' ? rateData :
+                    rateData.rate || rateData.value || rateData || 0
+                  )
+                  
+                  if (officialRate > 0 && officialRate < 1000) {
+                    rates.push({
+                      currency_code: currency,
+                      buy_rate: parseFloat((officialRate * 1.005).toFixed(4)),
+                      sell_rate: parseFloat((officialRate * 0.995).toFixed(4)),
+                      official_rate: parseFloat(officialRate.toFixed(4)),
+                      date: today,
+                    })
+                    console.log(`  ✅ ${currency}: ${officialRate} GEL`)
+                  }
+                }
+              }
+            }
 
-          // RUB rate
-          const rubToUsd = usdRates['RUB']
-          if (rubToUsd && rubToUsd > 0) {
-            const rubToGel = rubToUsd * gelRate
-            rates.push({
-              currency_code: 'RUB',
-              buy_rate: rubToGel * 1.005,
-              sell_rate: rubToGel * 0.995,
-              official_rate: rubToGel,
-              date: today,
-            })
+            // If we got all rates, return early
+            if (rates.length >= currencies.length) {
+              console.log(`✅ Successfully fetched all rates from NBG API`)
+              return rates
+            }
           }
-
-          if (rates.length >= 3) {
-            console.log('Successfully fetched rates from exchangerate-api.com:', rates)
-            return rates
+        } catch (error: any) {
+          console.warn(`  ❌ Endpoint ${endpoint} failed:`, error.message)
+          if (error.response) {
+            console.warn(`  Response status: ${error.response.status}`)
           }
+          continue // Try next endpoint
         }
       }
     } catch (error: any) {
-      console.warn('exchangerate-api.com failed:', error.message)
+      console.warn('❌ Direct NBG API failed:', error.message)
     }
 
-    // Fallback: Use mock data if all APIs fail
-    if (rates.length === 0) {
-      console.warn('All API methods failed, using fallback rates')
-      return getFallbackExchangeRates()
-    }
+    // Method 3: Try exchangerate-api.com as fallback (USD base, need to convert)
+    // This is less accurate as it's not GEL-based, but better than nothing
+    if (rates.length < currencies.length) {
+      try {
+        console.log('📡 Trying exchangerate-api.com as fallback...')
+        
+        const response = await axios.get('https://api.exchangerate-api.com/v4/latest/USD', {
+          timeout: 5000,
+          headers: {
+            'Accept': 'application/json',
+          },
+        })
 
-    // If we got some but not all rates, fill missing ones with fallback
-    const fallbackRates = getFallbackExchangeRates()
-    const existingCurrencies = new Set(rates.map(r => r.currency_code))
-    
-    for (const fallbackRate of fallbackRates) {
-      if (!existingCurrencies.has(fallbackRate.currency_code)) {
-        rates.push(fallbackRate)
+        if (response.data && response.data.rates) {
+          const usdRates = response.data.rates
+          const gelRate = usdRates['GEL'] // This is: 1 USD = X GEL
+          
+          if (gelRate && gelRate > 0) {
+            // Fill missing currencies
+            for (const currency of currencies) {
+              const existing = rates.find(r => r.currency_code === currency)
+              if (existing) continue
+              
+              if (currency === 'USD') {
+                rates.push({
+                  currency_code: 'USD',
+                  buy_rate: parseFloat((gelRate * 1.005).toFixed(4)),
+                  sell_rate: parseFloat((gelRate * 0.995).toFixed(4)),
+                  official_rate: parseFloat(gelRate.toFixed(4)),
+                  date: today,
+                })
+                console.log(`  ✅ USD (fallback): ${gelRate} GEL`)
+              } else if (currency === 'EUR') {
+                const eurToUsd = usdRates['EUR'] // 1 EUR = X USD
+                if (eurToUsd && eurToUsd > 0) {
+                  const eurToGel = gelRate / eurToUsd // Convert: 1 EUR = (1 USD in GEL) / (1 EUR in USD)
+                  rates.push({
+                    currency_code: 'EUR',
+                    buy_rate: parseFloat((eurToGel * 1.005).toFixed(4)),
+                    sell_rate: parseFloat((eurToGel * 0.995).toFixed(4)),
+                    official_rate: parseFloat(eurToGel.toFixed(4)),
+                    date: today,
+                  })
+                  console.log(`  ✅ EUR (fallback): ${eurToGel} GEL`)
+                }
+              } else if (currency === 'RUB') {
+                const rubToUsd = usdRates['RUB'] // 1 RUB = X USD
+                if (rubToUsd && rubToUsd > 0) {
+                  const rubToGel = gelRate / rubToUsd // Convert: 1 RUB = (1 USD in GEL) / (1 RUB in USD)
+                  rates.push({
+                    currency_code: 'RUB',
+                    buy_rate: parseFloat((rubToGel * 1.005).toFixed(4)),
+                    sell_rate: parseFloat((rubToGel * 0.995).toFixed(4)),
+                    official_rate: parseFloat(rubToGel.toFixed(4)),
+                    date: today,
+                  })
+                  console.log(`  ✅ RUB (fallback): ${rubToGel} GEL`)
+                }
+              }
+            }
+
+            if (rates.length >= currencies.length) {
+              console.log(`✅ Successfully fetched rates from exchangerate-api.com (fallback)`)
+              return rates
+            }
+          }
+        }
+      } catch (error: any) {
+        console.warn('❌ exchangerate-api.com failed:', error.message)
       }
     }
 
-    console.log('Final rates:', rates)
+    // Final check: If we have some rates but not all, fill missing with fallback
+    if (rates.length > 0 && rates.length < currencies.length) {
+      console.warn(`⚠️ Only fetched ${rates.length}/${currencies.length} rates. Filling missing with fallback.`)
+      const fallbackRates = getFallbackExchangeRates()
+      const existingCurrencies = new Set(rates.map(r => r.currency_code))
+      
+      for (const fallbackRate of fallbackRates) {
+        if (!existingCurrencies.has(fallbackRate.currency_code)) {
+          rates.push(fallbackRate)
+          console.warn(`  ⚠️ Using fallback for ${fallbackRate.currency_code}`)
+        }
+      }
+    }
+
+    // Last resort: If no rates at all, use fallback
+    if (rates.length === 0) {
+      console.error('❌ All API methods failed, using fallback rates')
+      return getFallbackExchangeRates()
+    }
+
+    console.log(`✅ Final rates (${rates.length} currencies):`, rates.map(r => `${r.currency_code}: ${r.official_rate}`).join(', '))
     return rates
   } catch (error: any) {
     console.error('Error fetching exchange rates:', error.message)
