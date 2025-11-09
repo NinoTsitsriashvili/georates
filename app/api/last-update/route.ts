@@ -10,20 +10,40 @@ export async function GET() {
       const db = await import('@/lib/db')
       const client = db.getSupabase()
       
+      // Get the most recent successful refresh (any data type)
       const { data, error } = await client
         .from('refresh_logs')
-        .select('created_at')
+        .select('created_at, data_type, status')
+        .eq('status', 'success')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (error && error.code !== 'PGRST116') {
         throw error
       }
 
+      // If no successful refresh found, try to get any refresh
+      if (!data) {
+        const { data: anyData } = await client
+          .from('refresh_logs')
+          .select('created_at')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        
+        return NextResponse.json({
+          lastUpdate: anyData?.created_at || null,
+          success: true,
+          source: 'database',
+        })
+      }
+
       return NextResponse.json({
-        lastUpdate: data?.created_at || null,
+        lastUpdate: data.created_at,
         success: true,
+        source: 'database',
+        dataType: data.data_type,
       })
     } catch (error: any) {
       // If Supabase is not configured, return current time

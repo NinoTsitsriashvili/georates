@@ -13,18 +13,43 @@ export default function Home() {
   const { locale, t } = useLanguage()
   const { theme } = useTheme()
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [lastUpdateRelative, setLastUpdateRelative] = useState<string>('')
+
+  // Format relative time (e.g., "2 hours ago", "Just now")
+  const formatRelativeTime = (date: Date): string => {
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+    return date.toLocaleDateString(locale)
+  }
 
   useEffect(() => {
     // Fetch last update time
-    fetch('/api/last-update')
-      .then(res => res.json())
-      .then(data => {
-        if (data.lastUpdate) {
-          setLastUpdate(new Date(data.lastUpdate))
-        }
-      })
-      .catch(console.error)
-  }, [])
+    const fetchLastUpdate = () => {
+      fetch('/api/last-update')
+        .then(res => res.json())
+        .then(data => {
+          if (data.lastUpdate) {
+            const updateDate = new Date(data.lastUpdate)
+            setLastUpdate(updateDate)
+            setLastUpdateRelative(formatRelativeTime(updateDate))
+          }
+        })
+        .catch(console.error)
+    }
+
+    fetchLastUpdate()
+    // Refresh every 5 minutes to update relative time
+    const interval = setInterval(fetchLastUpdate, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [locale])
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
@@ -51,9 +76,14 @@ export default function Home() {
                 {t('common.subtitle')}
               </p>
               {lastUpdate && (
-                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
-                  {t('common.lastUpdate')}: {lastUpdate.toLocaleString(locale)}
-                </p>
+                <div className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
+                  <p className="font-medium">
+                    {t('common.lastUpdate')}: {lastUpdate.toLocaleString(locale)}
+                  </p>
+                  <p className="text-xs sm:text-sm mt-1">
+                    {lastUpdateRelative}
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -100,7 +130,12 @@ export default function Home() {
               &copy; {new Date().getFullYear()} GeoRates. {t('common.title')}
             </p>
             <p className="text-xs sm:text-sm">
-              {t('common.lastUpdate')}: {lastUpdate ? lastUpdate.toLocaleString(locale) : 'N/A'}
+              {t('common.lastUpdate')}: {lastUpdate ? (
+                <>
+                  {lastUpdate.toLocaleString(locale)}
+                  {lastUpdateRelative && <span className="ml-2 text-gray-400">({lastUpdateRelative})</span>}
+                </>
+              ) : 'N/A'}
             </p>
           </div>
         </div>
