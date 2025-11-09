@@ -156,7 +156,16 @@ export async function getYesterdayExchangeRates(): Promise<ExchangeRate[]> {
       previousDate = previousDateObj.toISOString().split('T')[0]
     }
     
-    console.log('[getYesterdayExchangeRates] Latest date:', latestDate, 'Previous date:', previousDate)
+    console.log('[getYesterdayExchangeRates] Latest date:', latestDate, 'Type:', typeof latestDate)
+    console.log('[getYesterdayExchangeRates] Previous date:', previousDate)
+    
+    // Also try to get all dates to see what's available
+    const { data: allDates } = await client
+      .from('exchange_rates')
+      .select('date')
+      .order('date', { ascending: false })
+    
+    console.log('[getYesterdayExchangeRates] All available dates:', allDates?.map((d: any) => d.date).filter((v: any, i: number, a: any[]) => a.indexOf(v) === i))
     
     // Get all rates for the previous date
     const { data, error } = await client
@@ -166,6 +175,42 @@ export async function getYesterdayExchangeRates(): Promise<ExchangeRate[]> {
       .order('created_at', { ascending: false })
     
     console.log('[getYesterdayExchangeRates] Found', data?.length || 0, 'rates for date', previousDate)
+    
+    // If no data found, try a different approach - get all rates and filter manually
+    if (!data || data.length === 0) {
+      console.log('[getYesterdayExchangeRates] No rates found with .eq(), trying manual filter...')
+      const { data: allRates } = await client
+        .from('exchange_rates')
+        .select('*')
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+      
+      console.log('[getYesterdayExchangeRates] All rates dates:', allRates?.map((r: any) => ({ date: r.date, currency: r.currency_code })))
+      
+      // Filter manually by comparing date strings
+      const filtered = allRates?.filter((rate: any) => {
+        const rateDateStr = typeof rate.date === 'string' ? rate.date : rate.date?.toISOString()?.split('T')[0]
+        return rateDateStr === previousDate
+      })
+      
+      console.log('[getYesterdayExchangeRates] Manually filtered:', filtered?.length || 0, 'rates')
+      
+      if (filtered && filtered.length > 0) {
+        // Use the filtered data
+        const previousRates: ExchangeRate[] = []
+        const seen = new Set<string>()
+        
+        for (const rate of filtered) {
+          if (!seen.has(rate.currency_code)) {
+            previousRates.push(rate)
+            seen.add(rate.currency_code)
+          }
+        }
+        
+        previousRates.sort((a, b) => a.currency_code.localeCompare(b.currency_code))
+        return previousRates
+      }
+    }
 
     if (error) throw error
 
@@ -182,6 +227,8 @@ export async function getYesterdayExchangeRates(): Promise<ExchangeRate[]> {
 
     // Sort by currency code for consistent ordering
     previousRates.sort((a, b) => a.currency_code.localeCompare(b.currency_code))
+    
+    console.log('[getYesterdayExchangeRates] Returning', previousRates.length, 'unique rates')
 
     return previousRates
   } catch (error: any) {
