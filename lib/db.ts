@@ -298,36 +298,52 @@ export async function insertExchangeRate(rate: ExchangeRate): Promise<void> {
       ? rate.date.split('T')[0]  // Take only date part if ISO string
       : new Date(rate.date).toISOString().split('T')[0]
     
-    // First, try to delete existing record to force update
-    // This ensures we always get fresh data
+    console.log(`[insertExchangeRate] Attempting to save ${rate.currency_code} for ${dateStr}:`)
+    console.log(`  official_rate: ${rate.official_rate}, buy_rate: ${rate.buy_rate}, sell_rate: ${rate.sell_rate}`)
+    
+    // Delete any existing records for this currency+date combination
     const { error: deleteError } = await client
       .from('exchange_rates')
       .delete()
       .eq('currency_code', rate.currency_code)
       .eq('date', dateStr)
     
-    // Then insert the new record
-    const { error: insertError } = await client
+    if (deleteError) {
+      console.warn(`[insertExchangeRate] Delete warning (may not exist):`, deleteError.message)
+    } else {
+      console.log(`[insertExchangeRate] Deleted existing record(s) for ${rate.currency_code} on ${dateStr}`)
+    }
+    
+    // Insert the new record with explicit values
+    const insertData = {
+      currency_code: rate.currency_code,
+      buy_rate: Number(rate.buy_rate),
+      sell_rate: Number(rate.sell_rate),
+      official_rate: Number(rate.official_rate),
+      date: dateStr,
+    }
+    
+    console.log(`[insertExchangeRate] Inserting:`, JSON.stringify(insertData, null, 2))
+    
+    const { data: insertData_result, error: insertError } = await client
       .from('exchange_rates')
-      .insert({
-        currency_code: rate.currency_code,
-        buy_rate: rate.buy_rate,
-        sell_rate: rate.sell_rate,
-        official_rate: rate.official_rate,
-        date: dateStr,
-      })
+      .insert(insertData)
+      .select()
 
     if (insertError) {
       console.error(`[insertExchangeRate] Error inserting ${rate.currency_code} for ${dateStr}:`, insertError)
+      console.error(`[insertExchangeRate] Error details:`, JSON.stringify(insertError, null, 2))
       throw insertError
     }
     
-    console.log(`[insertExchangeRate] ✅ Saved ${rate.currency_code}: ${rate.official_rate} GEL (buy: ${rate.buy_rate}, sell: ${rate.sell_rate}) for ${dateStr}`)
+    console.log(`[insertExchangeRate] ✅ Successfully saved ${rate.currency_code}: ${rate.official_rate} GEL for ${dateStr}`)
+    console.log(`[insertExchangeRate] Inserted record:`, JSON.stringify(insertData_result, null, 2))
   } catch (error: any) {
     if (error.message?.includes('Missing Supabase')) {
       console.warn('Cannot save to database: Supabase not configured')
       return
     }
+    console.error(`[insertExchangeRate] Fatal error:`, error)
     throw error
   }
 }
