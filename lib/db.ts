@@ -72,15 +72,33 @@ export interface RefreshLog {
 export async function getLatestExchangeRates(): Promise<ExchangeRate[]> {
   try {
     const client = getSupabaseClient()
+    
+    // Get the latest date first
+    const { data: latestDateData, error: dateError } = await client
+      .from('exchange_rates')
+      .select('date')
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (dateError && dateError.code !== 'PGRST116') throw dateError
+    
+    if (!latestDateData || !latestDateData.date) {
+      return []
+    }
+
+    const latestDate = latestDateData.date
+
+    // Get all rates for the latest date, ordered by created_at DESC to get the most recent
     const { data, error } = await client
       .from('exchange_rates')
       .select('*')
-      .order('date', { ascending: false })
-      .limit(10)
+      .eq('date', latestDate)
+      .order('created_at', { ascending: false })
 
     if (error) throw error
 
-    // Get latest rate for each currency
+    // Get the latest rate for each currency (first occurrence since we ordered by created_at DESC)
     const latestRates: ExchangeRate[] = []
     const seen = new Set<string>()
 
@@ -90,6 +108,9 @@ export async function getLatestExchangeRates(): Promise<ExchangeRate[]> {
         seen.add(rate.currency_code)
       }
     }
+
+    // Sort by currency code for consistent ordering
+    latestRates.sort((a, b) => a.currency_code.localeCompare(b.currency_code))
 
     return latestRates
   } catch (error: any) {
