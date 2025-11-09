@@ -127,7 +127,7 @@ export default function AdminPage() {
             {t('admin.title')}
           </h1>
 
-          <div className="mb-6">
+          <div className="mb-6 flex gap-4">
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -135,6 +135,12 @@ export default function AdminPage() {
             >
               {refreshing ? t('common.loading') : t('admin.refreshData')}
             </button>
+            <a
+              href="/admin/analytics"
+              className="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700"
+            >
+              View Analytics
+            </a>
           </div>
 
           {message && (

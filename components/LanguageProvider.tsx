@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { getTranslations, type Locale } from '@/lib/i18n'
+import { trackLanguageChange } from '@/lib/analytics'
 
 interface LanguageContextType {
   locale: Locale
@@ -33,9 +34,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setLocale = (newLocale: Locale) => {
+    const oldLocale = locale
     setLocaleState(newLocale)
     if (typeof window !== 'undefined') {
       localStorage.setItem('locale', newLocale)
+      // Track language change
+      if (oldLocale !== newLocale) {
+        trackLanguageChange(oldLocale, newLocale, window.location.pathname)
+      }
     }
   }
 
