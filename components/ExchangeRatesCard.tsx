@@ -7,6 +7,13 @@ import type { ExchangeRate } from '@/lib/db'
 
 interface RateWithChange extends ExchangeRate {
   previous_rate?: number
+  change?: number
+  change_percent?: string
+  is_positive?: boolean
+  is_negative?: boolean
+  is_neutral?: boolean
+  has_yesterday_data?: boolean
+  calculated_at?: string
 }
 
 export default function ExchangeRatesCard() {
@@ -16,8 +23,11 @@ export default function ExchangeRatesCard() {
 
   useEffect(() => {
     fetchRates(true) // Initial load
-    // Refresh rates every 30 seconds to catch database updates quickly
-    const interval = setInterval(() => fetchRates(false), 30 * 1000)
+    // Refresh rates every 10 seconds to catch database updates immediately
+    const interval = setInterval(() => {
+      console.log('[ExchangeRatesCard] Auto-refreshing from database...')
+      fetchRates(false)
+    }, 10 * 1000)
     return () => clearInterval(interval)
   }, [])
 
@@ -42,17 +52,16 @@ export default function ExchangeRatesCard() {
           console.log('[ExchangeRatesCard] Debug info:', data.debug)
         }
         
-        // Log each rate with its previous_rate for debugging
+        // Log each rate - all values come from database
         data.rates.forEach((rate: any) => {
-          if (rate._debug) {
-            console.log(`[ExchangeRatesCard] ${rate.currency_code}:`, {
-              today: rate.official_rate,
-              yesterday: rate._debug.yesterdayRate,
-              previous_rate: rate.previous_rate,
-              change: rate._debug.change,
-              changePercent: rate._debug.changePercent,
-            })
-          }
+          console.log(`[ExchangeRatesCard] ${rate.currency_code} (from DB):`, {
+            today: rate.official_rate,
+            yesterday: rate.previous_rate,
+            change: rate.change,
+            change_percent: rate.change_percent,
+            has_yesterday_data: rate.has_yesterday_data,
+            calculated_at: rate.calculated_at,
+          })
         })
         
         setRates(data.rates)
@@ -102,22 +111,26 @@ export default function ExchangeRatesCard() {
     ]
   }
 
-  // Calculate change indicator
-  // Compares today's official_rate with yesterday's official_rate
-  // Formula: ((today - yesterday) / yesterday) * 100
-  // Positive = rate increased (GEL got weaker, need more GEL to buy foreign currency)
-  // Negative = rate decreased (GEL got stronger, need less GEL to buy foreign currency)
+  // Display change indicator - ALL values come from database (pre-calculated server-side)
+  // No client-side calculations - everything is from database
   const getChangeIndicator = (rate: RateWithChange) => {
-    if (!rate.previous_rate) return null
+    // Use pre-calculated values from database (server-side)
+    if (!rate.has_yesterday_data) {
+      return (
+        <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+          <span className="text-xs">—</span>
+          <span className="text-xs">N/A</span>
+        </div>
+      )
+    }
     
-    // Calculate absolute change (today - yesterday)
-    const change = rate.official_rate - rate.previous_rate
-    // Calculate percentage change: ((change / yesterday) * 100)
-    const changePercent = ((change / rate.previous_rate) * 100).toFixed(2)
-    const isPositive = change > 0
-    const isNegative = change < 0
+    // All values come from database via API
+    const changePercent = rate.change_percent || '0.00'
+    const isPositive = rate.is_positive || false
+    const isNegative = rate.is_negative || false
+    const isNeutral = rate.is_neutral || false
     
-    if (change === 0) {
+    if (isNeutral) {
       return (
         <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
           <span className="text-xs">—</span>

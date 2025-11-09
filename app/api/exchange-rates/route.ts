@@ -69,41 +69,67 @@ export async function GET() {
       
       console.log('[exchange-rates API] Yesterday map:', Object.fromEntries(yesterdayMap))
       
-      // Add previous_rate to each current rate
-      // If yesterday's rate exists, use it; otherwise use today's rate (no change)
+      // Calculate ALL dynamic values server-side from database
+      // This ensures database changes are immediately reflected
       const ratesWithChange = rates.map((rate: any) => {
         const yesterdayRate = yesterdayMap.get(rate.currency_code)
         const previousRate = yesterdayRate !== undefined ? yesterdayRate : rate.official_rate
+        
+        // Calculate change (always from database values)
         const change = rate.official_rate - previousRate
+        
+        // Calculate percentage change (always from database values)
         const changePercent = previousRate !== rate.official_rate 
           ? ((change / previousRate) * 100).toFixed(2)
           : '0.00'
         
+        // Calculate change direction
+        const isPositive = change > 0
+        const isNegative = change < 0
+        const isNeutral = change === 0
+        
+        // Return ALL values pre-calculated from database
         return {
           ...rate,
+          // Database values
+          buy_rate: rate.buy_rate,
+          sell_rate: rate.sell_rate,
+          official_rate: rate.official_rate,
+          date: rate.date,
+          currency_code: rate.currency_code,
+          // Calculated values (from database)
           previous_rate: previousRate,
-          // Debug info (can be removed later)
-          _debug: {
-            hasYesterday: yesterdayRate !== undefined,
-            yesterdayRate,
-            change,
-            changePercent,
-          },
+          change: change,
+          change_percent: changePercent,
+          is_positive: isPositive,
+          is_negative: isNegative,
+          is_neutral: isNeutral,
+          // Metadata
+          has_yesterday_data: yesterdayRate !== undefined,
+          calculated_at: new Date().toISOString(),
         }
       })
       
-      // If we have rates from database, return them
+      // If we have rates from database, return them with NO CACHING
       if (rates && rates.length > 0) {
         return NextResponse.json({ 
           rates: ratesWithChange, 
           success: true, 
           fallback: false,
           source: 'database',
+          timestamp: new Date().toISOString(),
           debug: {
             todayCount: rates.length,
             yesterdayCount: yesterdayRates.length,
             yesterdayMap: Object.fromEntries(yesterdayMap),
           },
+        }, {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Content-Type-Options': 'nosniff',
+          }
         })
       }
     } catch (error: any) {
