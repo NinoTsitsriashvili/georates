@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLanguage } from '@/components/LanguageProvider'
 import Header from '@/components/Header'
+
+const AUTH_STORAGE_KEY = 'georates_admin_auth'
 
 export default function AdminPage() {
   const { t } = useLanguage()
@@ -12,13 +14,55 @@ export default function AdminPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [logs, setLogs] = useState<any[]>([])
   const [message, setMessage] = useState('')
+  const [checkingAuth, setCheckingAuth] = useState(true)
+
+  const fetchLogs = async () => {
+    try {
+      const response = await fetch('/api/admin/logs')
+      const data = await response.json()
+      if (data.success) {
+        setLogs(data.logs || [])
+      }
+    } catch (error) {
+      console.error('Error fetching logs:', error)
+    }
+  }
+
+  // Check if already authenticated on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY)
+      if (storedAuth) {
+        try {
+          // Verify the stored auth is still valid
+          const response = await fetch('/api/admin/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: storedAuth }),
+          })
+          const data = await response.json()
+          
+          if (data.success) {
+            setAuthenticated(true)
+            fetchLogs()
+          } else {
+            // Invalid stored password, clear it
+            localStorage.removeItem(AUTH_STORAGE_KEY)
+          }
+        } catch (error) {
+          localStorage.removeItem(AUTH_STORAGE_KEY)
+        }
+      }
+      setCheckingAuth(false)
+    }
+    
+    checkAuth()
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     
-    // In production, this should be done server-side
-    // For now, we'll use a simple client-side check
     const response = await fetch('/api/admin/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -28,13 +72,28 @@ export default function AdminPage() {
     const data = await response.json()
     
     if (data.success) {
+      // Store password in localStorage for persistent auth
+      localStorage.setItem(AUTH_STORAGE_KEY, password)
       setAuthenticated(true)
       fetchLogs()
     } else {
       setMessage('Invalid password')
+      localStorage.removeItem(AUTH_STORAGE_KEY)
     }
     
     setLoading(false)
+  }
+
+  const fetchLogs = async () => {
+    try {
+      const response = await fetch('/api/admin/logs')
+      const data = await response.json()
+      if (data.success) {
+        setLogs(data.logs || [])
+      }
+    } catch (error) {
+      console.error('Error fetching logs:', error)
+    }
   }
 
   const handleRefresh = async () => {
@@ -42,10 +101,11 @@ export default function AdminPage() {
     setMessage('')
 
     try {
+      const storedPassword = localStorage.getItem(AUTH_STORAGE_KEY) || password
       const response = await fetch('/api/refresh', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${password}`,
+          'Authorization': `Bearer ${storedPassword}`,
           'Content-Type': 'application/json',
         },
       })
@@ -65,16 +125,19 @@ export default function AdminPage() {
     }
   }
 
-  const fetchLogs = async () => {
-    try {
-      const response = await fetch('/api/admin/logs')
-      const data = await response.json()
-      if (data.success) {
-        setLogs(data.logs || [])
-      }
-    } catch (error) {
-      console.error('Error fetching logs:', error)
-    }
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Header />
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+            <div className="text-center text-gray-500 dark:text-gray-400">
+              Checking authentication...
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!authenticated) {
@@ -127,7 +190,7 @@ export default function AdminPage() {
             {t('admin.title')}
           </h1>
 
-          <div className="mb-6 flex gap-4">
+          <div className="mb-6 flex gap-4 items-center">
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -141,6 +204,15 @@ export default function AdminPage() {
             >
               View Analytics
             </a>
+            <button
+              onClick={() => {
+                localStorage.removeItem(AUTH_STORAGE_KEY)
+                setAuthenticated(false)
+              }}
+              className="ml-auto text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            >
+              Logout
+            </button>
           </div>
 
           {message && (

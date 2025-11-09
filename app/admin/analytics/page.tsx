@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useLanguage } from '@/components/LanguageProvider'
 import Header from '@/components/Header'
 
+const AUTH_STORAGE_KEY = 'georates_admin_auth'
+
 interface PageView {
   page_path: string
   view_count: number
@@ -47,6 +49,36 @@ export default function AnalyticsPage() {
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
   const [visitors, setVisitors] = useState<any[]>([])
   const [loadingData, setLoadingData] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+
+  // Check if already authenticated on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY)
+      if (storedAuth) {
+        try {
+          const response = await fetch('/api/admin/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: storedAuth }),
+          })
+          const data = await response.json()
+          
+          if (data.success) {
+            setAuthenticated(true)
+            fetchAnalytics()
+          } else {
+            localStorage.removeItem(AUTH_STORAGE_KEY)
+          }
+        } catch (error) {
+          localStorage.removeItem(AUTH_STORAGE_KEY)
+        }
+      }
+      setCheckingAuth(false)
+    }
+    
+    checkAuth()
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,6 +93,7 @@ export default function AnalyticsPage() {
     const data = await response.json()
     
     if (data.success) {
+      localStorage.setItem(AUTH_STORAGE_KEY, password)
       setAuthenticated(true)
       fetchAnalytics()
     }
@@ -108,6 +141,21 @@ export default function AnalyticsPage() {
       fetchAnalytics()
     }
   }, [days, authenticated])
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Header />
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+            <div className="text-center text-gray-500 dark:text-gray-400">
+              Checking authentication...
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!authenticated) {
     return (
@@ -169,6 +217,15 @@ export default function AnalyticsPage() {
             >
               Back to Admin
             </a>
+            <button
+              onClick={() => {
+                localStorage.removeItem(AUTH_STORAGE_KEY)
+                setAuthenticated(false)
+              }}
+              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            >
+              Logout
+            </button>
           </div>
         </div>
 
