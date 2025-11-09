@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit",
     "db:migrate": "node scripts/migrate.js",
     "data:fetch": "tsx scripts/fetch-data.ts",
+    "data:historical": "tsx scripts/fetch-historical-data.ts",
     "create:yesterday": "tsx scripts/create-yesterday-data.ts"
   },
   "dependencies": {

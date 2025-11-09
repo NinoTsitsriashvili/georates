@@ -7,17 +7,18 @@ import type { ExchangeRate, PetrolPrice, ElectricityTariff } from './db'
 const NBG_API_URL = 'https://nbg.gov.ge/en/monetary-policy/currency'
 
 /**
- * Fetch exchange rates from National Bank of Georgia API
+ * Fetch exchange rates from National Bank of Georgia API for a specific date
  * NBG publishes official rates by ~17:00 local time each business day
  * Rates are in GEL (1 foreign currency = X GEL)
+ * @param date Optional date string (YYYY-MM-DD). If not provided, uses today.
  */
-export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
+export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]> {
   try {
-    const today = new Date().toISOString().split('T')[0]
+    const targetDate = date || new Date().toISOString().split('T')[0]
     const currencies = ['USD', 'EUR', 'RUB']
     const rates: ExchangeRate[] = []
 
-    console.log('🚀 Starting exchange rate fetch from NBG...')
+    console.log(`🚀 Starting exchange rate fetch from NBG for date: ${targetDate}...`)
 
     // Method 1: Try Bank of Georgia API wrapper for NBG rates (most reliable)
     // This uses: GET api/rates/nbg/{currency}
@@ -74,7 +75,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
               buy_rate: parseFloat(buyRate.toFixed(4)),
               sell_rate: parseFloat(sellRate.toFixed(4)),
               official_rate: parseFloat(officialRate.toFixed(4)),
-              date: today,
+              date: targetDate,
             })
             
             console.log(`  ✅ ${currency}: ${officialRate} GEL per 1 ${currency}`)
@@ -150,7 +151,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
                         buy_rate: parseFloat((officialRate * 1.005).toFixed(4)),
                         sell_rate: parseFloat((officialRate * 0.995).toFixed(4)),
                         official_rate: parseFloat(officialRate.toFixed(4)),
-                        date: today,
+                        date: targetDate,
                       })
                       console.log(`  ✅ ${currency}: ${officialRate} GEL`)
                     }
@@ -187,7 +188,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
                       buy_rate: parseFloat((officialRate * 1.005).toFixed(4)),
                       sell_rate: parseFloat((officialRate * 0.995).toFixed(4)),
                       official_rate: parseFloat(officialRate.toFixed(4)),
-                      date: today,
+                      date: targetDate,
                     })
                     console.log(`  ✅ ${currency}: ${officialRate} GEL`)
                   }
@@ -242,7 +243,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
                   buy_rate: parseFloat((gelRate * 1.005).toFixed(4)),
                   sell_rate: parseFloat((gelRate * 0.995).toFixed(4)),
                   official_rate: parseFloat(gelRate.toFixed(4)),
-                  date: today,
+                  date: targetDate,
                 })
                 console.log(`  ✅ USD (fallback): ${gelRate} GEL`)
               } else if (currency === 'EUR') {
@@ -254,7 +255,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
                     buy_rate: parseFloat((eurToGel * 1.005).toFixed(4)),
                     sell_rate: parseFloat((eurToGel * 0.995).toFixed(4)),
                     official_rate: parseFloat(eurToGel.toFixed(4)),
-                    date: today,
+                    date: targetDate,
                   })
                   console.log(`  ✅ EUR (fallback): ${eurToGel} GEL`)
                 }
@@ -267,7 +268,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
                     buy_rate: parseFloat((rubToGel * 1.005).toFixed(4)),
                     sell_rate: parseFloat((rubToGel * 0.995).toFixed(4)),
                     official_rate: parseFloat(rubToGel.toFixed(4)),
-                    date: today,
+                    date: targetDate,
                   })
                   console.log(`  ✅ RUB (fallback): ${rubToGel} GEL`)
                 }
@@ -288,7 +289,8 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
     // Final check: If we have some rates but not all, fill missing with fallback
     if (rates.length > 0 && rates.length < currencies.length) {
       console.warn(`⚠️ Only fetched ${rates.length}/${currencies.length} rates. Filling missing with fallback.`)
-      const fallbackRates = getFallbackExchangeRates()
+      const fallbackDate = date || new Date().toISOString().split('T')[0]
+      const fallbackRates = getFallbackExchangeRates(fallbackDate)
       const existingCurrencies = new Set(rates.map(r => r.currency_code))
       
       for (const fallbackRate of fallbackRates) {
@@ -302,47 +304,49 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
     // Last resort: If no rates at all, use fallback
     if (rates.length === 0) {
       console.error('❌ All API methods failed, using fallback rates')
-      return getFallbackExchangeRates()
+      const fallbackDate = date || new Date().toISOString().split('T')[0]
+      return getFallbackExchangeRates(fallbackDate)
     }
 
     console.log(`✅ Final rates (${rates.length} currencies):`, rates.map(r => `${r.currency_code}: ${r.official_rate}`).join(', '))
     return rates
   } catch (error: any) {
     console.error('Error fetching exchange rates:', error.message)
-    return getFallbackExchangeRates()
+    const fallbackDate = date || new Date().toISOString().split('T')[0]
+    return getFallbackExchangeRates(fallbackDate)
   }
 }
 
-function getFallbackExchangeRates(): ExchangeRate[] {
-  const today = new Date().toISOString().split('T')[0]
+function getFallbackExchangeRates(date?: string): ExchangeRate[] {
+  const targetDate = date || new Date().toISOString().split('T')[0]
   return [
     {
       currency_code: 'USD',
       buy_rate: 2.65,
       sell_rate: 2.63,
       official_rate: 2.64,
-      date: today,
+      date: targetDate,
     },
     {
       currency_code: 'EUR',
       buy_rate: 2.88,
       sell_rate: 2.86,
       official_rate: 2.87,
-      date: today,
+      date: targetDate,
     },
     {
       currency_code: 'RUB',
       buy_rate: 0.029,
       sell_rate: 0.028,
       official_rate: 0.0285,
-      date: today,
+      date: targetDate,
     },
     {
       currency_code: 'GBP',
       buy_rate: 3.35,
       sell_rate: 3.33,
       official_rate: 3.34,
-      date: today,
+      date: targetDate,
     },
   ]
 }
@@ -353,6 +357,7 @@ function getFallbackExchangeRates(): ExchangeRate[] {
 export async function fetchPetrolPrices(): Promise<PetrolPrice[]> {
   const prices: PetrolPrice[] = []
   const today = new Date().toISOString().split('T')[0]
+  const targetDate = today // Use today for petrol prices
 
   const companies = [
     { name: 'Gulf', url: 'https://gulf.ge' },
@@ -390,7 +395,7 @@ export async function fetchPetrolPrices(): Promise<PetrolPrice[]> {
           company_name: company.name,
           fuel_type: 'regular',
           price: regularPrice,
-          date: today,
+          date: targetDate,
         })
       }
 
@@ -399,7 +404,7 @@ export async function fetchPetrolPrices(): Promise<PetrolPrice[]> {
           company_name: company.name,
           fuel_type: 'premium',
           price: premiumPrice,
-          date: today,
+          date: targetDate,
         })
       }
 
@@ -408,7 +413,7 @@ export async function fetchPetrolPrices(): Promise<PetrolPrice[]> {
           company_name: company.name,
           fuel_type: 'super',
           price: superPrice,
-          date: today,
+          date: targetDate,
         })
       }
 
@@ -417,7 +422,7 @@ export async function fetchPetrolPrices(): Promise<PetrolPrice[]> {
           company_name: company.name,
           fuel_type: 'diesel',
           price: dieselPrice,
-          date: today,
+          date: targetDate,
         })
       }
     } catch (error) {
@@ -457,6 +462,7 @@ function getFallbackPetrolPrices(): PetrolPrice[] {
  */
 export async function fetchElectricityTariffs(): Promise<ElectricityTariff[]> {
   const today = new Date().toISOString().split('T')[0]
+  const targetDate = today // Use today for electricity tariffs
 
   // Electricity tariffs are typically static and published by the government
   // Adjust these values based on actual Georgian electricity tariff structure
@@ -465,53 +471,138 @@ export async function fetchElectricityTariffs(): Promise<ElectricityTariff[]> {
       region: 'Tbilisi',
       tariff_type: 'residential',
       price_per_kwh: 0.12,
-      date: today,
+      date: targetDate,
     },
     {
       region: 'Tbilisi',
       tariff_type: 'commercial',
       price_per_kwh: 0.15,
-      date: today,
+      date: targetDate,
     },
     {
       region: 'Batumi',
       tariff_type: 'residential',
       price_per_kwh: 0.11,
-      date: today,
+      date: targetDate,
     },
     {
       region: 'Batumi',
       tariff_type: 'commercial',
       price_per_kwh: 0.14,
-      date: today,
+      date: targetDate,
     },
     {
       region: 'Kutaisi',
       tariff_type: 'residential',
       price_per_kwh: 0.11,
-      date: today,
+      date: targetDate,
     },
     {
       region: 'Kutaisi',
       tariff_type: 'commercial',
       price_per_kwh: 0.14,
-      date: today,
+      date: targetDate,
     },
     {
       region: 'Other Regions',
       tariff_type: 'residential',
       price_per_kwh: 0.10,
-      date: today,
+      date: targetDate,
     },
     {
       region: 'Other Regions',
       tariff_type: 'commercial',
       price_per_kwh: 0.13,
-      date: today,
+      date: targetDate,
     },
   ]
 
   return tariffs
+}
+
+/**
+ * Fetch historical exchange rates for the last N days
+ * Note: BOG API only returns current rates, so we'll use current rates for all dates
+ * In production, you might want to use a different API that supports historical data
+ * @param days Number of days to fetch (default: 7)
+ */
+export async function fetchHistoricalExchangeRates(days: number = 7): Promise<{
+  totalFetched: number
+  errors: string[]
+}> {
+  const errors: string[] = []
+  let totalFetched = 0
+  const today = new Date()
+  
+  console.log(`📅 Fetching historical exchange rates for last ${days} days...`)
+  console.log(`⚠️  Note: BOG API only returns current rates. Using current rates for all dates.`)
+  
+  // First, fetch current rates
+  let currentRates: any[] = []
+  try {
+    console.log(`  📆 Fetching current rates...`)
+    currentRates = await fetchExchangeRates()
+    console.log(`  ✅ Fetched ${currentRates.length} current rates`)
+  } catch (error: any) {
+    const errorMsg = `Failed to fetch current rates: ${error.message}`
+    errors.push(errorMsg)
+    console.error(`  ❌ ${errorMsg}`)
+    return { totalFetched: 0, errors }
+  }
+  
+  if (currentRates.length === 0) {
+    console.error(`  ❌ No current rates available to use for historical data`)
+    return { totalFetched: 0, errors }
+  }
+  
+  // Apply current rates to each historical date
+  for (let i = 0; i < days; i++) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+    const dateStr = date.toISOString().split('T')[0]
+    
+    // Skip weekends (Saturday = 6, Sunday = 0)
+    const dayOfWeek = date.getDay()
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      console.log(`  ⏭️  Skipping ${dateStr} (weekend)`)
+      continue
+    }
+    
+    try {
+      console.log(`  📆 Saving rates for ${dateStr}...`)
+      
+      for (const currentRate of currentRates) {
+        // Create rate for this date using current rate values
+        const historicalRate = {
+          ...currentRate,
+          date: dateStr,
+        }
+        
+        try {
+          await insertExchangeRate(historicalRate)
+          totalFetched++
+        } catch (error: any) {
+          // If it's a duplicate, that's okay - just log it
+          if (error.message?.includes('duplicate') || error.message?.includes('unique') || error.code === '23505') {
+            console.log(`    ℹ️  ${historicalRate.currency_code} for ${dateStr} already exists`)
+          } else {
+            throw error
+          }
+        }
+      }
+      console.log(`  ✅ Saved ${currentRates.length} rates for ${dateStr}`)
+      
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 200))
+    } catch (error: any) {
+      const errorMsg = `Failed to save ${dateStr}: ${error.message}`
+      errors.push(errorMsg)
+      console.error(`  ❌ ${errorMsg}`)
+    }
+  }
+  
+  console.log(`✅ Historical fetch completed: ${totalFetched} rates saved`)
+  return { totalFetched, errors }
 }
 
 /**
@@ -528,9 +619,9 @@ export async function refreshAllData(): Promise<{
   let petrolPricesCount = 0
   let electricityTariffsCount = 0
 
-  // Fetch and save exchange rates
+  // Fetch and save exchange rates (today's rates)
   try {
-    const rates = await fetchExchangeRates()
+    const rates = await fetchExchangeRates() // Uses today by default
     for (const rate of rates) {
       await insertExchangeRate(rate)
       exchangeRatesCount++
@@ -540,6 +631,7 @@ export async function refreshAllData(): Promise<{
       status: 'success',
       records_updated: exchangeRatesCount,
     })
+    console.log(`✅ Saved ${exchangeRatesCount} exchange rates for today`)
   } catch (error: any) {
     const errorMsg = `Exchange rates: ${error.message}`
     errors.push(errorMsg)

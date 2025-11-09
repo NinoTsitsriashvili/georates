@@ -1,9 +1,9 @@
-name: Daily Data Refresh
+name: Exchange Rates Refresh (Every 2 Hours)
 
 on:
   schedule:
-    # Run daily at 2:00 AM UTC (6:00 AM Georgia time)
-    - cron: '0 2 * * *'
+    # Run every 2 hours
+    - cron: '0 */2 * * *'
   workflow_dispatch: # Allow manual triggering
 
 jobs:
