@@ -9,6 +9,23 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET() {
   try {
+    // Check environment variables first
+    const supabaseUrl = process.env.SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json({
+        success: false,
+        error: 'Missing Supabase environment variables',
+        details: {
+          hasUrl: !!supabaseUrl,
+          hasKey: !!supabaseKey,
+          urlValue: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'missing',
+          hint: 'Add SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY to Vercel Environment Variables',
+        },
+      }, { status: 500 })
+    }
+    
     const supabase = getSupabase()
     
     // Test if analytics_events table exists
