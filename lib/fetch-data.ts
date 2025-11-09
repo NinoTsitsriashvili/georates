@@ -27,7 +27,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
       
       try {
         const response = await axios.get(nbgEndpoint, {
-          timeout: 10000,
+          timeout: 5000, // Reduced from 10s to 5s
           headers: {
             'Accept': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -160,7 +160,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
             const url = `${baseUrl}/api/rates/nbg/${currency}`
             try {
               const response = await axios.get(url, {
-                timeout: 8000,
+                timeout: 3000, // Reduced from 8s to 3s
                 headers: {
                   'Accept': 'application/json',
                 },
@@ -212,7 +212,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRate[]> {
       console.log('Trying exchangerate-api.com as fallback...')
       
       const response = await axios.get('https://api.exchangerate-api.com/v4/latest/USD', {
-        timeout: 10000,
+        timeout: 5000, // Reduced from 10s to 5s
         headers: {
           'Accept': 'application/json',
         },
@@ -342,7 +342,7 @@ export async function fetchPetrolPrices(): Promise<PetrolPrice[]> {
   for (const company of companies) {
     try {
       const response = await axios.get(company.url, {
-        timeout: 10000,
+        timeout: 5000, // Reduced from 10s to 5s
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
