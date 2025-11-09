@@ -23,9 +23,20 @@ export default function ExchangeRatesCard() {
 
   const fetchRates = async (isInitialLoad: boolean = false) => {
     try {
-      const res = await fetch('/api/exchange-rates')
+      // Add cache-busting parameter to ensure fresh data
+      const res = await fetch(`/api/exchange-rates?t=${Date.now()}`)
       const data = await res.json()
+      
+      console.log('[ExchangeRatesCard] Fetched rates:', data)
+      
       if (data.success && data.rates) {
+        // Log debug info if available
+        if (data.debug) {
+          console.log('[ExchangeRatesCard] Debug info:', data.debug)
+        }
+        if (data.rates[0]?._debug) {
+          console.log('[ExchangeRatesCard] Rate debug:', data.rates[0]._debug)
+        }
         setRates(data.rates)
       } else {
         // Use fallback rates if API fails

@@ -58,10 +58,16 @@ export async function GET() {
       yesterdayRates = dbYesterdayRates
       fromDatabase = true
       
+      console.log('[exchange-rates API] Today rates:', rates.length, 'Yesterday rates:', yesterdayRates.length)
+      console.log('[exchange-rates API] Today currencies:', rates.map((r: any) => r.currency_code))
+      console.log('[exchange-rates API] Yesterday currencies:', yesterdayRates.map((r: any) => r.currency_code))
+      
       // Create a map of yesterday's rates for quick lookup (using official_rate for comparison)
       const yesterdayMap = new Map(
         yesterdayRates.map((rate: any) => [rate.currency_code, rate.official_rate])
       )
+      
+      console.log('[exchange-rates API] Yesterday map:', Object.fromEntries(yesterdayMap))
       
       // Add previous_rate to each current rate
       // If yesterday's rate exists, use it; otherwise use today's rate (no change)

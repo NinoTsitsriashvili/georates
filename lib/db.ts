@@ -142,10 +142,21 @@ export async function getYesterdayExchangeRates(): Promise<ExchangeRate[]> {
     const latestDate = latestDateData.date
     
     // Get the previous date (yesterday relative to the latest date)
-    const latestDateObj = new Date(latestDate)
-    const previousDateObj = new Date(latestDateObj)
-    previousDateObj.setDate(previousDateObj.getDate() - 1)
-    const previousDate = previousDateObj.toISOString().split('T')[0]
+    // Handle date as string (YYYY-MM-DD format from database)
+    let previousDate: string
+    if (typeof latestDate === 'string') {
+      const latestDateObj = new Date(latestDate + 'T00:00:00') // Add time to avoid timezone issues
+      const previousDateObj = new Date(latestDateObj)
+      previousDateObj.setDate(previousDateObj.getDate() - 1)
+      previousDate = previousDateObj.toISOString().split('T')[0]
+    } else {
+      // If it's already a Date object
+      const previousDateObj = new Date(latestDate)
+      previousDateObj.setDate(previousDateObj.getDate() - 1)
+      previousDate = previousDateObj.toISOString().split('T')[0]
+    }
+    
+    console.log('[getYesterdayExchangeRates] Latest date:', latestDate, 'Previous date:', previousDate)
     
     // Get all rates for the previous date
     const { data, error } = await client
@@ -153,6 +164,8 @@ export async function getYesterdayExchangeRates(): Promise<ExchangeRate[]> {
       .select('*')
       .eq('date', previousDate)
       .order('created_at', { ascending: false })
+    
+    console.log('[getYesterdayExchangeRates] Found', data?.length || 0, 'rates for date', previousDate)
 
     if (error) throw error
 
