@@ -50,11 +50,12 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
               })
               console.log(`  ✅ USD: ${officialRate.toFixed(4)} GEL per 1 USD`)
             } else if (currency === 'EUR') {
-              // EUR: API gives 1 EUR = X USD, we need 1 EUR = Y GEL
-              // Formula: 1 EUR = (1 EUR in USD) * (1 USD in GEL) = eurToUsd * gelRate
-              const eurToUsd = usdRates['EUR'] // e.g., 1.08 (1 EUR = 1.08 USD)
-              if (eurToUsd && eurToUsd > 0 && eurToUsd < 5) {
-                const officialRate = eurToUsd * gelRate // e.g., 1.08 * 2.71 = 2.93
+              // API base is USD, so rates['EUR'] = 1 USD = X EUR
+              // We need: 1 EUR = Y GEL
+              // Formula: 1 EUR = (1 USD in GEL) / (1 USD in EUR) = gelRate / eurRate
+              const eurRate = usdRates['EUR'] // e.g., 0.865 (1 USD = 0.865 EUR)
+              if (eurRate && eurRate > 0 && eurRate < 5) {
+                const officialRate = gelRate / eurRate // e.g., 2.71 / 0.865 = 3.13
                 rates.push({
                   currency_code: 'EUR',
                   buy_rate: parseFloat((officialRate * 1.005).toFixed(4)),
@@ -62,14 +63,15 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
                   official_rate: parseFloat(officialRate.toFixed(4)),
                   date: targetDate,
                 })
-                console.log(`  ✅ EUR: ${officialRate.toFixed(4)} GEL per 1 EUR (from ${eurToUsd} USD)`)
+                console.log(`  ✅ EUR: ${officialRate.toFixed(4)} GEL per 1 EUR (from ${eurRate} EUR per USD)`)
               }
             } else if (currency === 'RUB') {
-              // RUB: API gives 1 RUB = X USD, we need 1 RUB = Y GEL
-              // Formula: 1 RUB = (1 RUB in USD) * (1 USD in GEL) = rubToUsd * gelRate
-              const rubToUsd = usdRates['RUB'] // e.g., 0.01 (1 RUB = 0.01 USD)
-              if (rubToUsd && rubToUsd > 0 && rubToUsd < 1) {
-                const officialRate = rubToUsd * gelRate // e.g., 0.01 * 2.71 = 0.0271
+              // API base is USD, so rates['RUB'] = 1 USD = X RUB
+              // We need: 1 RUB = Y GEL
+              // Formula: 1 RUB = (1 USD in GEL) / (1 USD in RUB) = gelRate / rubRate
+              const rubRate = usdRates['RUB'] // e.g., 80.97 (1 USD = 80.97 RUB)
+              if (rubRate && rubRate > 0 && rubRate < 200) {
+                const officialRate = gelRate / rubRate // e.g., 2.71 / 80.97 = 0.0335
                 rates.push({
                   currency_code: 'RUB',
                   buy_rate: parseFloat((officialRate * 1.005).toFixed(4)),
@@ -77,7 +79,7 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
                   official_rate: parseFloat(officialRate.toFixed(4)),
                   date: targetDate,
                 })
-                console.log(`  ✅ RUB: ${officialRate.toFixed(4)} GEL per 1 RUB (from ${rubToUsd} USD)`)
+                console.log(`  ✅ RUB: ${officialRate.toFixed(4)} GEL per 1 RUB (from ${rubRate} RUB per USD)`)
               }
             }
           }
