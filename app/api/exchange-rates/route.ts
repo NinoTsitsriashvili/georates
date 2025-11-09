@@ -67,9 +67,22 @@ export async function GET() {
       // If yesterday's rate exists, use it; otherwise use today's rate (no change)
       const ratesWithChange = rates.map((rate: any) => {
         const yesterdayRate = yesterdayMap.get(rate.currency_code)
+        const previousRate = yesterdayRate !== undefined ? yesterdayRate : rate.official_rate
+        const change = rate.official_rate - previousRate
+        const changePercent = previousRate !== rate.official_rate 
+          ? ((change / previousRate) * 100).toFixed(2)
+          : '0.00'
+        
         return {
           ...rate,
-          previous_rate: yesterdayRate !== undefined ? yesterdayRate : rate.official_rate,
+          previous_rate: previousRate,
+          // Debug info (can be removed later)
+          _debug: {
+            hasYesterday: yesterdayRate !== undefined,
+            yesterdayRate,
+            change,
+            changePercent,
+          },
         }
       })
       
@@ -79,7 +92,12 @@ export async function GET() {
           rates: ratesWithChange, 
           success: true, 
           fallback: false,
-          source: 'database'
+          source: 'database',
+          debug: {
+            todayCount: rates.length,
+            yesterdayCount: yesterdayRates.length,
+            yesterdayMap: Object.fromEntries(yesterdayMap),
+          },
         })
       }
     } catch (error: any) {

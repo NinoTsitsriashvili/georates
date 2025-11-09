@@ -9,7 +9,8 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "db:migrate": "node scripts/migrate.js",
-    "data:fetch": "tsx scripts/fetch-data.ts"
+    "data:fetch": "tsx scripts/fetch-data.ts",
+    "create:yesterday": "tsx scripts/create-yesterday-data.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
