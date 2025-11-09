@@ -402,23 +402,15 @@ export async function refreshAllData(): Promise<{
     
     for (const rate of rates) {
       try {
+        console.log(`  💾 Saving ${rate.currency_code}: ${rate.official_rate} GEL (buy: ${rate.buy_rate}, sell: ${rate.sell_rate}) for date ${rate.date}`)
         await insertExchangeRate(rate)
         exchangeRatesCount++
-        console.log(`  ✅ Saved ${rate.currency_code}: ${rate.official_rate} GEL`)
+        console.log(`  ✅ Successfully saved ${rate.currency_code}`)
       } catch (error: any) {
-        // If duplicate, that's okay - just log it
-        if (error.message?.includes('duplicate') || error.message?.includes('unique') || error.code === '23505') {
-          console.log(`  ℹ️  ${rate.currency_code} for ${rate.date} already exists, updating...`)
-          // Try to update instead
-          try {
-            await insertExchangeRate(rate) // upsert should handle this
-            exchangeRatesCount++
-          } catch (updateError) {
-            console.warn(`  ⚠️  Could not update ${rate.currency_code}:`, updateError)
-          }
-        } else {
-          throw error
-        }
+        const errorMsg = `Failed to save ${rate.currency_code}: ${error.message}`
+        console.error(`  ❌ ${errorMsg}`)
+        errors.push(errorMsg)
+        // Continue with other rates even if one fails
       }
     }
     

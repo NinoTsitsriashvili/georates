@@ -292,11 +292,31 @@ export async function getExchangeRateHistory(
 export async function insertExchangeRate(rate: ExchangeRate): Promise<void> {
   try {
     const client = getSupabaseClient()
+    
+    // Use upsert with explicit update behavior to ensure all fields are updated
     const { error } = await client
       .from('exchange_rates')
-      .upsert(rate, { onConflict: 'currency_code,date' })
+      .upsert(
+        {
+          currency_code: rate.currency_code,
+          buy_rate: rate.buy_rate,
+          sell_rate: rate.sell_rate,
+          official_rate: rate.official_rate,
+          date: rate.date,
+          // Don't include id or created_at in upsert - let database handle them
+        },
+        {
+          onConflict: 'currency_code,date',
+          // Explicitly update all fields on conflict
+        }
+      )
 
-    if (error) throw error
+    if (error) {
+      console.error(`[insertExchangeRate] Error upserting ${rate.currency_code} for ${rate.date}:`, error)
+      throw error
+    }
+    
+    console.log(`[insertExchangeRate] ✅ Upserted ${rate.currency_code}: ${rate.official_rate} GEL for ${rate.date}`)
   } catch (error: any) {
     if (error.message?.includes('Missing Supabase')) {
       console.warn('Cannot save to database: Supabase not configured')
