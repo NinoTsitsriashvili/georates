@@ -105,20 +105,25 @@ body {
   }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - matches design system */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100 dark:bg-gray-800;
+  background: var(--color-neutral-light);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: var(--color-neutral-light);
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  background: var(--color-border);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400 dark:bg-gray-500;
+  background: var(--color-text-secondary);
 }
 
