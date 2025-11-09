@@ -39,12 +39,13 @@ export default function AnalyticsPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [loading, setLoading] = useState(false)
   const [days, setDays] = useState(30)
-  const [activeTab, setActiveTab] = useState<'overview' | 'pages' | 'languages' | 'daily'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'pages' | 'languages' | 'daily' | 'visitors'>('overview')
   
   const [overview, setOverview] = useState<Overview | null>(null)
   const [pageViews, setPageViews] = useState<PageView[]>([])
   const [languageStats, setLanguageStats] = useState<LanguageStat[]>([])
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([])
+  const [visitors, setVisitors] = useState<any[]>([])
   const [loadingData, setLoadingData] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -90,6 +91,11 @@ export default function AnalyticsPage() {
       const dailyRes = await fetch(`/api/analytics/stats?days=${days}&type=daily`)
       const dailyData = await dailyRes.json()
       if (dailyData.success) setDailyStats(dailyData.data)
+      
+      // Fetch visitors
+      const visitorsRes = await fetch(`/api/analytics/visitors?days=${days}&limit=100`)
+      const visitorsData = await visitorsRes.json()
+      if (visitorsData.success) setVisitors(visitorsData.visitors)
     } catch (error) {
       console.error('Error fetching analytics:', error)
     } finally {
@@ -169,7 +175,7 @@ export default function AnalyticsPage() {
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex gap-4">
-            {(['overview', 'pages', 'languages', 'daily'] as const).map((tab) => (
+            {(['overview', 'pages', 'languages', 'daily', 'visitors'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -327,6 +333,85 @@ export default function AnalyticsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Visitors Tab */}
+            {activeTab === 'visitors' && (
+              <div className="overflow-x-auto">
+                <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                  Showing {visitors.length} unique visitors
+                </div>
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Time</th>
+                      <th className="px-4 py-2 text-left">Location</th>
+                      <th className="px-4 py-2 text-left">Device</th>
+                      <th className="px-4 py-2 text-left">OS</th>
+                      <th className="px-4 py-2 text-left">Browser</th>
+                      <th className="px-4 py-2 text-left">Language</th>
+                      <th className="px-4 py-2 text-right">Pages</th>
+                      <th className="px-4 py-2 text-right">Views</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visitors.map((visitor, idx) => (
+                      <tr key={idx} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-4 py-2">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(visitor.last_visit).toLocaleDateString()}
+                          </div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500">
+                            {new Date(visitor.last_visit).toLocaleTimeString()}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="font-medium">{visitor.country}</div>
+                          {visitor.city && visitor.city !== 'Unknown' && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{visitor.city}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="font-medium">{visitor.device_type}</div>
+                          {visitor.device_brand && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{visitor.device_brand}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="font-medium">{visitor.os_name}</div>
+                          {visitor.os_version && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{visitor.os_version}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="font-medium">{visitor.browser_name}</div>
+                          {visitor.browser_version && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{visitor.browser_version}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">
+                            {visitor.language.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          <div className="font-medium">{visitor.pages.length}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {visitor.pages.slice(0, 2).join(', ')}
+                            {visitor.pages.length > 2 && '...'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-right font-medium">{visitor.page_views}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {visitors.length === 0 && (
+                  <div className="text-center py-12 text-gray-500">
+                    No visitors found for the selected period
+                  </div>
+                )}
               </div>
             )}
           </div>
