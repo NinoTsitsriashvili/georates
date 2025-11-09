@@ -84,18 +84,6 @@ export default function AdminPage() {
     setLoading(false)
   }
 
-  const fetchLogs = async () => {
-    try {
-      const response = await fetch('/api/admin/logs')
-      const data = await response.json()
-      if (data.success) {
-        setLogs(data.logs || [])
-      }
-    } catch (error) {
-      console.error('Error fetching logs:', error)
-    }
-  }
-
   const handleRefresh = async () => {
     setRefreshing(true)
     setMessage('')
