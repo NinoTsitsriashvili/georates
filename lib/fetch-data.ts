@@ -16,7 +16,7 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
   try {
     const targetDate = date || new Date().toISOString().split('T')[0]
     const currencies = ['USD', 'EUR', 'RUB']
-    const rates: ExchangeRate[] = []
+    let rates: ExchangeRate[] = []
 
     console.log(`🚀 Starting exchange rate fetch from NBG for date: ${targetDate}...`)
 
@@ -230,80 +230,79 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
 
     // Method 3: Try exchangerate-api.com (Primary reliable source - works!)
     // This API is reliable and free, returns USD-based rates
-    if (rates.length < currencies.length) {
-      try {
-        console.log('📡 Trying exchangerate-api.com (reliable source)...')
-        
-        const response = await axios.get('https://api.exchangerate-api.com/v4/latest/USD', {
-          timeout: 10000,
-          headers: {
-            'Accept': 'application/json',
-          },
-        })
+    // Always use this as the primary source since BOG API may not be accessible
+    try {
+      console.log('📡 Trying exchangerate-api.com (reliable source)...')
+      
+      const response = await axios.get('https://api.exchangerate-api.com/v4/latest/USD', {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+        },
+      })
 
-        if (response.data && response.data.rates) {
-          const usdRates = response.data.rates
-          const gelRate = usdRates['GEL'] // This is: 1 USD = X GEL
+      if (response.data && response.data.rates) {
+        const usdRates = response.data.rates
+        const gelRate = usdRates['GEL'] // This is: 1 USD = X GEL
+        
+        console.log(`  Found GEL rate: ${gelRate}`)
+        
+        if (gelRate && gelRate > 0) {
+          // Clear any existing rates and use exchangerate-api.com as the source of truth
+          rates = []
           
-          console.log(`  Found GEL rate: ${gelRate}`)
-          
-          if (gelRate && gelRate > 0) {
-            // Fill missing currencies
-            for (const currency of currencies) {
-              const existing = rates.find(r => r.currency_code === currency)
-              if (existing) continue
-              
-              if (currency === 'USD') {
+          // Fill all currencies with correct rates
+          for (const currency of currencies) {
+            if (currency === 'USD') {
+              rates.push({
+                currency_code: 'USD',
+                buy_rate: parseFloat((gelRate * 1.005).toFixed(4)),
+                sell_rate: parseFloat((gelRate * 0.995).toFixed(4)),
+                official_rate: parseFloat(gelRate.toFixed(4)),
+                date: targetDate,
+              })
+              console.log(`  ✅ USD: ${gelRate} GEL per 1 USD`)
+            } else if (currency === 'EUR') {
+              const eurToUsd = usdRates['EUR'] // 1 EUR = X USD
+              if (eurToUsd && eurToUsd > 0) {
+                const eurToGel = gelRate / eurToUsd // Convert: 1 EUR = (1 USD in GEL) / (1 EUR in USD)
                 rates.push({
-                  currency_code: 'USD',
-                  buy_rate: parseFloat((gelRate * 1.005).toFixed(4)),
-                  sell_rate: parseFloat((gelRate * 0.995).toFixed(4)),
-                  official_rate: parseFloat(gelRate.toFixed(4)),
+                  currency_code: 'EUR',
+                  buy_rate: parseFloat((eurToGel * 1.005).toFixed(4)),
+                  sell_rate: parseFloat((eurToGel * 0.995).toFixed(4)),
+                  official_rate: parseFloat(eurToGel.toFixed(4)),
                   date: targetDate,
                 })
-                console.log(`  ✅ USD: ${gelRate} GEL per 1 USD`)
-              } else if (currency === 'EUR') {
-                const eurToUsd = usdRates['EUR'] // 1 EUR = X USD
-                if (eurToUsd && eurToUsd > 0) {
-                  const eurToGel = gelRate / eurToUsd // Convert: 1 EUR = (1 USD in GEL) / (1 EUR in USD)
-                  rates.push({
-                    currency_code: 'EUR',
-                    buy_rate: parseFloat((eurToGel * 1.005).toFixed(4)),
-                    sell_rate: parseFloat((eurToGel * 0.995).toFixed(4)),
-                    official_rate: parseFloat(eurToGel.toFixed(4)),
-                    date: targetDate,
-                  })
-                  console.log(`  ✅ EUR: ${eurToGel.toFixed(4)} GEL per 1 EUR`)
-                }
-              } else if (currency === 'RUB') {
-                const rubToUsd = usdRates['RUB'] // 1 RUB = X USD
-                if (rubToUsd && rubToUsd > 0) {
-                  const rubToGel = gelRate / rubToUsd // Convert: 1 RUB = (1 USD in GEL) / (1 RUB in USD)
-                  rates.push({
-                    currency_code: 'RUB',
-                    buy_rate: parseFloat((rubToGel * 1.005).toFixed(4)),
-                    sell_rate: parseFloat((rubToGel * 0.995).toFixed(4)),
-                    official_rate: parseFloat(rubToGel.toFixed(4)),
-                    date: targetDate,
-                  })
-                  console.log(`  ✅ RUB: ${rubToGel.toFixed(4)} GEL per 1 RUB`)
-                }
+                console.log(`  ✅ EUR: ${eurToGel.toFixed(4)} GEL per 1 EUR`)
+              }
+            } else if (currency === 'RUB') {
+              const rubToUsd = usdRates['RUB'] // 1 RUB = X USD
+              if (rubToUsd && rubToUsd > 0) {
+                const rubToGel = gelRate / rubToUsd // Convert: 1 RUB = (1 USD in GEL) / (1 RUB in USD)
+                rates.push({
+                  currency_code: 'RUB',
+                  buy_rate: parseFloat((rubToGel * 1.005).toFixed(4)),
+                  sell_rate: parseFloat((rubToGel * 0.995).toFixed(4)),
+                  official_rate: parseFloat(rubToGel.toFixed(4)),
+                  date: targetDate,
+                })
+                console.log(`  ✅ RUB: ${rubToGel.toFixed(4)} GEL per 1 RUB`)
               }
             }
-
-            if (rates.length >= currencies.length) {
-              console.log(`✅ Successfully fetched all rates from exchangerate-api.com`)
-              return rates
-            }
-          } else {
-            console.warn(`  ⚠️ Invalid GEL rate: ${gelRate}`)
           }
+
+          if (rates.length >= currencies.length) {
+            console.log(`✅ Successfully fetched all rates from exchangerate-api.com`)
+            return rates
+          }
+        } else {
+          console.warn(`  ⚠️ Invalid GEL rate: ${gelRate}`)
         }
-      } catch (error: any) {
-        console.warn('❌ exchangerate-api.com failed:', error.message)
-        if (error.response) {
-          console.warn(`  Response status: ${error.response.status}`)
-        }
+      }
+    } catch (error: any) {
+      console.warn('❌ exchangerate-api.com failed:', error.message)
+      if (error.response) {
+        console.warn(`  Response status: ${error.response.status}`)
       }
     }
 
