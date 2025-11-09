@@ -1,12 +1,13 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
-
-// Lazy initialization - only create client when needed
+// Lazy initialization - read env vars when needed, not at module load time
 let supabaseInstance: SupabaseClient | null = null
 
 function getSupabaseClient(): SupabaseClient {
+  // Read env vars lazily (when function is called, not at module load)
+  const supabaseUrl = process.env.SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+  
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase environment variables. Please configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY in your .env.local file.')
   }

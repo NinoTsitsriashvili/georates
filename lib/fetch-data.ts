@@ -20,9 +20,9 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
 
     console.log(`🚀 Starting exchange rate fetch from NBG for date: ${targetDate}...`)
 
-    // Method 1: Try Bank of Georgia API wrapper for NBG rates (most reliable)
-    // This uses: GET api/rates/nbg/{currency}
-    // Returns: GEL per 1 foreign currency (e.g., 1 USD = 2.7241 GEL)
+    // Method 1: Try Bank of Georgia API wrapper for NBG rates
+    // Note: This API may require authentication or may not be publicly accessible
+    // We'll try it but fall back to exchangerate-api.com if it fails
     try {
       console.log('📡 Trying Bank of Georgia API (NBG rates wrapper)...')
       
@@ -40,16 +40,24 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
               'Accept': 'application/json',
               'User-Agent': 'GeoRates/1.0',
             },
+            maxRedirects: 0, // Don't follow redirects
+            validateStatus: (status) => status < 400, // Accept redirects
           })
 
-          console.log(`  ${currency} response:`, response.data)
+          // Check if we got HTML (redirect to website)
+          if (typeof response.data === 'string' && response.data.includes('<!DOCTYPE')) {
+            console.log(`  ⚠️ ${currency}: API redirected to HTML page (API may require auth)`)
+            continue
+          }
+
+          console.log(`  ${currency} response:`, typeof response.data, Array.isArray(response.data) ? 'array' : 'object')
 
           let officialRate: number = 0
           
           // Handle different response formats
           if (typeof response.data === 'number') {
             officialRate = response.data
-          } else if (response.data && typeof response.data === 'object') {
+          } else if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
             // Try common field names
             officialRate = parseFloat(
               response.data.rate ||
@@ -60,7 +68,7 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
               response.data.Value ||
               0
             )
-          } else if (typeof response.data === 'string') {
+          } else if (typeof response.data === 'string' && !response.data.includes('<!DOCTYPE')) {
             officialRate = parseFloat(response.data) || 0
           }
 
@@ -84,19 +92,25 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
             console.warn(`  ⚠️ Invalid rate for ${currency}: ${officialRate}`)
           }
         } catch (error: any) {
-          console.warn(`  ❌ Failed to fetch ${currency}:`, error.message)
+          if (error.response?.status === 301 || error.response?.status === 302) {
+            console.log(`  ⚠️ ${currency}: API redirects (may require authentication)`)
+          } else {
+            console.warn(`  ❌ Failed to fetch ${currency}:`, error.message)
+          }
           continue
         }
       }
 
       if (successCount === currencies.length) {
-        console.log(`✅ Successfully fetched all ${successCount} rates from BOG API (NBG wrapper)`)
+        console.log(`✅ Successfully fetched all ${successCount} rates from BOG API`)
         return rates
       } else if (successCount > 0) {
-        console.warn(`⚠️ Only fetched ${successCount}/${currencies.length} rates from BOG API`)
+        console.warn(`⚠️ Only fetched ${successCount}/${currencies.length} rates from BOG API, trying other sources...`)
+      } else {
+        console.log(`⚠️ BOG API not accessible, trying other sources...`)
       }
     } catch (error: any) {
-      console.warn('❌ BOG API (NBG wrapper) failed:', error.message)
+      console.warn('❌ BOG API failed:', error.message)
     }
 
     // Method 2: Try direct NBG API endpoints
@@ -214,14 +228,14 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
       console.warn('❌ Direct NBG API failed:', error.message)
     }
 
-    // Method 3: Try exchangerate-api.com as fallback (USD base, need to convert)
-    // This is less accurate as it's not GEL-based, but better than nothing
+    // Method 3: Try exchangerate-api.com (Primary reliable source - works!)
+    // This API is reliable and free, returns USD-based rates
     if (rates.length < currencies.length) {
       try {
-        console.log('📡 Trying exchangerate-api.com as fallback...')
+        console.log('📡 Trying exchangerate-api.com (reliable source)...')
         
         const response = await axios.get('https://api.exchangerate-api.com/v4/latest/USD', {
-          timeout: 5000,
+          timeout: 10000,
           headers: {
             'Accept': 'application/json',
           },
@@ -230,6 +244,8 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
         if (response.data && response.data.rates) {
           const usdRates = response.data.rates
           const gelRate = usdRates['GEL'] // This is: 1 USD = X GEL
+          
+          console.log(`  Found GEL rate: ${gelRate}`)
           
           if (gelRate && gelRate > 0) {
             // Fill missing currencies
@@ -245,7 +261,7 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
                   official_rate: parseFloat(gelRate.toFixed(4)),
                   date: targetDate,
                 })
-                console.log(`  ✅ USD (fallback): ${gelRate} GEL`)
+                console.log(`  ✅ USD: ${gelRate} GEL per 1 USD`)
               } else if (currency === 'EUR') {
                 const eurToUsd = usdRates['EUR'] // 1 EUR = X USD
                 if (eurToUsd && eurToUsd > 0) {
@@ -257,7 +273,7 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
                     official_rate: parseFloat(eurToGel.toFixed(4)),
                     date: targetDate,
                   })
-                  console.log(`  ✅ EUR (fallback): ${eurToGel} GEL`)
+                  console.log(`  ✅ EUR: ${eurToGel.toFixed(4)} GEL per 1 EUR`)
                 }
               } else if (currency === 'RUB') {
                 const rubToUsd = usdRates['RUB'] // 1 RUB = X USD
@@ -270,19 +286,24 @@ export async function fetchExchangeRates(date?: string): Promise<ExchangeRate[]>
                     official_rate: parseFloat(rubToGel.toFixed(4)),
                     date: targetDate,
                   })
-                  console.log(`  ✅ RUB (fallback): ${rubToGel} GEL`)
+                  console.log(`  ✅ RUB: ${rubToGel.toFixed(4)} GEL per 1 RUB`)
                 }
               }
             }
 
             if (rates.length >= currencies.length) {
-              console.log(`✅ Successfully fetched rates from exchangerate-api.com (fallback)`)
+              console.log(`✅ Successfully fetched all rates from exchangerate-api.com`)
               return rates
             }
+          } else {
+            console.warn(`  ⚠️ Invalid GEL rate: ${gelRate}`)
           }
         }
       } catch (error: any) {
         console.warn('❌ exchangerate-api.com failed:', error.message)
+        if (error.response) {
+          console.warn(`  Response status: ${error.response.status}`)
+        }
       }
     }
 

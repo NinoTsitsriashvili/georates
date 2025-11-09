@@ -11,6 +11,7 @@
     "db:migrate": "node scripts/migrate.js",
     "data:fetch": "tsx scripts/fetch-data.ts",
     "data:historical": "tsx scripts/fetch-historical-data.ts",
+    "test:refresh": "tsx scripts/test-refresh.ts",
     "create:yesterday": "tsx scripts/create-yesterday-data.ts"
   },
   "dependencies": {
