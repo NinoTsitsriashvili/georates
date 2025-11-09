@@ -293,30 +293,36 @@ export async function insertExchangeRate(rate: ExchangeRate): Promise<void> {
   try {
     const client = getSupabaseClient()
     
-    // Use upsert with explicit update behavior to ensure all fields are updated
-    const { error } = await client
+    // Ensure date is in YYYY-MM-DD format (no time component)
+    const dateStr = typeof rate.date === 'string' 
+      ? rate.date.split('T')[0]  // Take only date part if ISO string
+      : new Date(rate.date).toISOString().split('T')[0]
+    
+    // First, try to delete existing record to force update
+    // This ensures we always get fresh data
+    const { error: deleteError } = await client
       .from('exchange_rates')
-      .upsert(
-        {
-          currency_code: rate.currency_code,
-          buy_rate: rate.buy_rate,
-          sell_rate: rate.sell_rate,
-          official_rate: rate.official_rate,
-          date: rate.date,
-          // Don't include id or created_at in upsert - let database handle them
-        },
-        {
-          onConflict: 'currency_code,date',
-          // Explicitly update all fields on conflict
-        }
-      )
+      .delete()
+      .eq('currency_code', rate.currency_code)
+      .eq('date', dateStr)
+    
+    // Then insert the new record
+    const { error: insertError } = await client
+      .from('exchange_rates')
+      .insert({
+        currency_code: rate.currency_code,
+        buy_rate: rate.buy_rate,
+        sell_rate: rate.sell_rate,
+        official_rate: rate.official_rate,
+        date: dateStr,
+      })
 
-    if (error) {
-      console.error(`[insertExchangeRate] Error upserting ${rate.currency_code} for ${rate.date}:`, error)
-      throw error
+    if (insertError) {
+      console.error(`[insertExchangeRate] Error inserting ${rate.currency_code} for ${dateStr}:`, insertError)
+      throw insertError
     }
     
-    console.log(`[insertExchangeRate] ✅ Upserted ${rate.currency_code}: ${rate.official_rate} GEL for ${rate.date}`)
+    console.log(`[insertExchangeRate] ✅ Saved ${rate.currency_code}: ${rate.official_rate} GEL (buy: ${rate.buy_rate}, sell: ${rate.sell_rate}) for ${dateStr}`)
   } catch (error: any) {
     if (error.message?.includes('Missing Supabase')) {
       console.warn('Cannot save to database: Supabase not configured')
