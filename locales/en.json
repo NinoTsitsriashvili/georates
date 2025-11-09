@@ -1,0 +1,61 @@
+{
+  "common": {
+    "title": "GeoRates",
+    "subtitle": "Georgian Market Indicators",
+    "lastUpdate": "Last Update",
+    "loading": "Loading...",
+    "error": "Error",
+    "refresh": "Refresh",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "days": "days"
+  },
+  "nav": {
+    "exchangeRates": "Exchange Rates",
+    "petrolPrices": "Petrol Prices",
+    "electricity": "Electricity",
+    "about": "About"
+  },
+  "exchangeRates": {
+    "title": "Exchange Rates",
+    "baseCurrency": "Base Currency",
+    "usd": "US Dollar",
+    "eur": "Euro",
+    "rub": "Russian Ruble",
+    "gbp": "British Pound",
+    "buy": "Buy",
+    "sell": "Sell",
+    "change": "Change",
+    "trend": "Trend",
+    "viewDetails": "View Details",
+    "viewAllDetails": "View All Details",
+    "official": "Official Rate"
+  },
+  "petrolPrices": {
+    "title": "Petrol Prices",
+    "regular": "Regular",
+    "premium": "Premium",
+    "super": "Super",
+    "diesel": "Diesel",
+    "company": "Company",
+    "price": "Price",
+    "perLiter": "per Liter",
+    "viewAllDetails": "View All Details"
+  },
+  "electricity": {
+    "title": "Electricity Tariffs",
+    "region": "Region",
+    "residential": "Residential",
+    "commercial": "Commercial",
+    "perKwh": "per kWh"
+  },
+  "admin": {
+    "title": "Admin",
+    "login": "Login",
+    "password": "Password",
+    "refreshData": "Refresh Data",
+    "logs": "Logs",
+    "lastRefresh": "Last Refresh"
+  }
+}
+

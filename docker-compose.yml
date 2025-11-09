@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - ADMIN_SECRET=${ADMIN_SECRET}
+      - NEXT_PUBLIC_ADSENSE_ID=${NEXT_PUBLIC_ADSENSE_ID}
+      - NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID}
+    restart: unless-stopped
+
+  cron:
+    build: .
+    command: node scripts/cron-job.js
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - ADMIN_SECRET=${ADMIN_SECRET}
+    restart: unless-stopped
+    depends_on:
+      - app
+

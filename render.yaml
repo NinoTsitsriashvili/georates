@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: georates-api
+    env: node
+    buildCommand: npm install
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ADMIN_SECRET
+        sync: false
+
+crons:
+  - name: daily-data-refresh
+    schedule: "0 2 * * *"
+    command: node scripts/fetch-data.js
+

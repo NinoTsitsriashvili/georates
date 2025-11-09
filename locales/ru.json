@@ -1,0 +1,61 @@
+{
+  "common": {
+    "title": "GeoRates",
+    "subtitle": "Индикаторы грузинского рынка",
+    "lastUpdate": "Последнее обновление",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "refresh": "Обновить",
+    "darkMode": "Темный режим",
+    "lightMode": "Светлый режим",
+    "days": "дней"
+  },
+  "nav": {
+    "exchangeRates": "Курсы валют",
+    "petrolPrices": "Цены на бензин",
+    "electricity": "Электричество",
+    "about": "О нас"
+  },
+  "exchangeRates": {
+    "title": "Курсы валют",
+    "baseCurrency": "Базовая валюта",
+    "usd": "Доллар США",
+    "eur": "Евро",
+    "rub": "Российский рубль",
+    "gbp": "Британский фунт",
+    "buy": "Покупка",
+    "sell": "Продажа",
+    "change": "Изменение",
+    "trend": "Тренд",
+    "viewDetails": "Подробности",
+    "viewAllDetails": "Все подробности",
+    "official": "Официальный курс"
+  },
+  "petrolPrices": {
+    "title": "Цены на бензин",
+    "regular": "Обычный",
+    "premium": "Премиум",
+    "super": "Супер",
+    "diesel": "Дизель",
+    "company": "Компания",
+    "price": "Цена",
+    "perLiter": "за литр",
+    "viewAllDetails": "Все подробности"
+  },
+  "electricity": {
+    "title": "Тарифы на электроэнергию",
+    "region": "Регион",
+    "residential": "Жилой",
+    "commercial": "Коммерческий",
+    "perKwh": "за кВт/ч"
+  },
+  "admin": {
+    "title": "Администратор",
+    "login": "Вход",
+    "password": "Пароль",
+    "refreshData": "Обновить данные",
+    "logs": "Логи",
+    "lastRefresh": "Последнее обновление"
+  }
+}
+

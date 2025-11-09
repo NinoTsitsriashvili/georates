@@ -1,0 +1,61 @@
+{
+  "common": {
+    "title": "GeoRates",
+    "subtitle": "საქართველოს ბაზრის ინდიკატორები",
+    "lastUpdate": "ბოლო განახლება",
+    "loading": "იტვირთება...",
+    "error": "შეცდომა",
+    "refresh": "განახლება",
+    "darkMode": "მუქი რეჟიმი",
+    "lightMode": "ნათელი რეჟიმი",
+    "days": "დღე"
+  },
+  "nav": {
+    "exchangeRates": "ვალუტის კურსები",
+    "petrolPrices": "ბენზინის ფასები",
+    "electricity": "ელექტროენერგია",
+    "about": "ჩვენს შესახებ"
+  },
+  "exchangeRates": {
+    "title": "ვალუტის კურსები",
+    "baseCurrency": "ბაზისური ვალუტა",
+    "usd": "აშშ დოლარი",
+    "eur": "ევრო",
+    "rub": "რუსული რუბლი",
+    "gbp": "ბრიტანული ფუნტი",
+    "buy": "ყიდვა",
+    "sell": "გაყიდვა",
+    "change": "ცვლილება",
+    "trend": "ტენდენცია",
+    "viewDetails": "დეტალები",
+    "viewAllDetails": "ყველა დეტალი",
+    "official": "ოფიციალური კურსი"
+  },
+  "petrolPrices": {
+    "title": "ბენზინის ფასები",
+    "regular": "რეგულარული",
+    "premium": "პრემიუმ",
+    "super": "სუპერ",
+    "diesel": "დიზელი",
+    "company": "კომპანია",
+    "price": "ფასი",
+    "perLiter": "ლიტრზე",
+    "viewAllDetails": "ყველა დეტალი"
+  },
+  "electricity": {
+    "title": "ელექტროენერგიის ტარიფები",
+    "region": "რეგიონი",
+    "residential": "საცხოვრებელი",
+    "commercial": "კომერციული",
+    "perKwh": "კვტ/სთ-ზე"
+  },
+  "admin": {
+    "title": "ადმინისტრაცია",
+    "login": "შესვლა",
+    "password": "პაროლი",
+    "refreshData": "მონაცემების განახლება",
+    "logs": "ლოგები",
+    "lastRefresh": "ბოლო განახლება"
+  }
+}
+
