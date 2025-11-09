@@ -124,16 +124,53 @@ export async function getLatestExchangeRates(): Promise<ExchangeRate[]> {
 export async function getYesterdayExchangeRates(): Promise<ExchangeRate[]> {
   try {
     const client = getSupabaseClient()
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     
+    // First, get the latest date in the database
+    const { data: latestDateData, error: dateError } = await client
+      .from('exchange_rates')
+      .select('date')
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (dateError && dateError.code !== 'PGRST116') throw dateError
+    
+    if (!latestDateData || !latestDateData.date) {
+      return []
+    }
+
+    const latestDate = latestDateData.date
+    
+    // Get the previous date (yesterday relative to the latest date)
+    const latestDateObj = new Date(latestDate)
+    const previousDateObj = new Date(latestDateObj)
+    previousDateObj.setDate(previousDateObj.getDate() - 1)
+    const previousDate = previousDateObj.toISOString().split('T')[0]
+    
+    // Get all rates for the previous date
     const { data, error } = await client
       .from('exchange_rates')
       .select('*')
-      .eq('date', yesterday)
-      .order('currency_code', { ascending: true })
+      .eq('date', previousDate)
+      .order('created_at', { ascending: false })
 
     if (error) throw error
-    return data || []
+
+    // Get the latest rate for each currency for the previous date
+    const previousRates: ExchangeRate[] = []
+    const seen = new Set<string>()
+
+    for (const rate of data || []) {
+      if (!seen.has(rate.currency_code)) {
+        previousRates.push(rate)
+        seen.add(rate.currency_code)
+      }
+    }
+
+    // Sort by currency code for consistent ordering
+    previousRates.sort((a, b) => a.currency_code.localeCompare(b.currency_code))
+
+    return previousRates
   } catch (error: any) {
     if (error.message?.includes('Missing Supabase')) {
       return []

@@ -69,10 +69,16 @@ export default function ExchangeRatesCard() {
   }
 
   // Calculate change indicator
+  // Compares today's official_rate with yesterday's official_rate
+  // Formula: ((today - yesterday) / yesterday) * 100
+  // Positive = rate increased (GEL got weaker, need more GEL to buy foreign currency)
+  // Negative = rate decreased (GEL got stronger, need less GEL to buy foreign currency)
   const getChangeIndicator = (rate: RateWithChange) => {
     if (!rate.previous_rate) return null
     
+    // Calculate absolute change (today - yesterday)
     const change = rate.official_rate - rate.previous_rate
+    // Calculate percentage change: ((change / yesterday) * 100)
     const changePercent = ((change / rate.previous_rate) * 100).toFixed(2)
     const isPositive = change > 0
     const isNegative = change < 0

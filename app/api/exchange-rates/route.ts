@@ -57,16 +57,20 @@ export async function GET() {
       yesterdayRates = dbYesterdayRates
       fromDatabase = true
       
-      // Create a map of yesterday's rates for quick lookup
+      // Create a map of yesterday's rates for quick lookup (using official_rate for comparison)
       const yesterdayMap = new Map(
         yesterdayRates.map((rate: any) => [rate.currency_code, rate.official_rate])
       )
       
       // Add previous_rate to each current rate
-      const ratesWithChange = rates.map((rate: any) => ({
-        ...rate,
-        previous_rate: yesterdayMap.get(rate.currency_code) || rate.official_rate,
-      }))
+      // If yesterday's rate exists, use it; otherwise use today's rate (no change)
+      const ratesWithChange = rates.map((rate: any) => {
+        const yesterdayRate = yesterdayMap.get(rate.currency_code)
+        return {
+          ...rate,
+          previous_rate: yesterdayRate !== undefined ? yesterdayRate : rate.official_rate,
+        }
+      })
       
       // If we have rates from database, return them
       if (rates && rates.length > 0) {
