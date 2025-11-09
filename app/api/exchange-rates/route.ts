@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { fetchExchangeRates } from '@/lib/fetch-data'
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 3600 // Revalidate every hour
+// No revalidate - always fetch fresh data from database
+// This ensures manual database changes are reflected immediately
 
 // Fallback exchange rates (GEL per 1 unit of foreign currency)
 function getFallbackRates() {

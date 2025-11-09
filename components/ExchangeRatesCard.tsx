@@ -15,10 +15,13 @@ export default function ExchangeRatesCard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchRates()
+    fetchRates(true) // Initial load
+    // Refresh rates every 5 minutes to catch database updates
+    const interval = setInterval(() => fetchRates(false), 5 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [])
 
-  const fetchRates = async () => {
+  const fetchRates = async (isInitialLoad: boolean = false) => {
     try {
       const res = await fetch('/api/exchange-rates')
       const data = await res.json()
@@ -33,7 +36,9 @@ export default function ExchangeRatesCard() {
       // Use fallback rates on error
       setRates(getFallbackRates())
     } finally {
-      setLoading(false)
+      if (isInitialLoad) {
+        setLoading(false)
+      }
     }
   }
 
